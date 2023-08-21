@@ -48,4 +48,3 @@ cope with my requirements at first, at finally found out that *heroku does not s
 python runtimes at the moment]]. Thus, the solution is to simply use
 ~python-3.7.3~ as a runtime.
 
-# ./heroku_build_log.png https://paul-grillenberger.de/wp-content/uploads/2019/09/heroku_build_log.png

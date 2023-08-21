@@ -29,7 +29,7 @@ you get stuck, feel free to return to this blog post.
   know the distribution of our data) let us first revise what optimization
   problem the median solves. Since the proof will be somewhat computation heavy,
   let us do the same for the mean first. This may be seen as an add-on to the
-  blog post [[https://paul-grillenberger.de/?p=21][Means and medians]] where a general theme about these two invariants
+  blog post [[{{< ref "/posts/means-and-medians.md" >}}][Means and medians]] where a general theme about these two invariants
   has already emerged: While both serve similar purposes, usages of the median
   in theoretical contexts are always more involved.
 
@@ -321,5 +321,3 @@ you get stuck, feel free to return to this blog post.
   - [[https://www.cs.huji.ac.il/~shais/UnderstandingMachineLearning/][The book /Understanding Machine Learning/]] is available for free and has lots
     of great exercises.
 
-# ./bayes_distances.png https://paul-grillenberger.de/wp-content/uploads/2019/08/bayes_distances.png
-# ./bayes_classifier_word_counts.png https://paul-grillenberger.de/wp-content/uploads/2019/08/bayes_classifier_word_counts.png

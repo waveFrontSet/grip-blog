@@ -8,7 +8,7 @@ title: "Classifying SCPs, Part 2: Data transformation (TF-IDF) and preprocessing
 url: /2020/03/07/classifying-scps-part-2-data-transformation-and-preprocessing/
 ---
 
-After we have obtained data through the means described [[https://paul-grillenberger.de/?p=211][in the first part of
+After we have obtained data through the means described [[{{< ref "/posts/scp1-webcrawl.org" >}}][in the first part of
 this blog post series]], it is time to deal with data transformations and data preprocessing.
 While humans can comprehend textual information in the form of articles, it is
 hard to digest for a Machine Learning algorithm. In this blog post, we will
@@ -87,7 +87,7 @@ def test_from_text():
 #+END_SRC
 
 ** Validation of the label through a =@property=
-As mentioned in the [[https://paul-grillenberger.de/?p=211][last first part of this series]], we are only concentrating on the
+As mentioned in the [[{{< ref "/posts/scp1-webcrawl.org" >}}][last part of this series]], we are only concentrating on the
 labels /SAFE/, /EUCLID/ and /KETER/. To account for this, we need to validate
 that the incoming label is one of those. We are a little more lenient and also
 accept labels that only start with one of those three labels.
@@ -451,7 +451,7 @@ ratio.
 
 Whereas /count/, /mean/, /min/ and /max/ are self-explanatory, /std/ stands for
 /standard deviation/. The rows with percentages are the 25%-, 50%-, and
-75%-/quantiles/, respectively. They were defined in [[https://paul-grillenberger.de/?p=21][my Blog post on means and
+75%-/quantiles/, respectively. They were defined in [[{{< ref "/posts/means-and-medians.md" >}}][my Blog post on means and
 medians]]. Here's a short refresher: The 25%-quantile is a value such that 25%
 of the data is smaller than or equal to it and the other 75% of the data is
 greater than or equal to it. The 50%-quantile is also known as the median.
@@ -669,7 +669,6 @@ with the inverse document frequency. In formulae:
 \mathrm{TFIDF}(A) = \left(\frac{\mathrm{wc}_A(w_1)}{\mathrm{df}(w_1)}, \dotsc, \frac{\mathrm{wc}_A(w_m)}{\mathrm{df}(w_m)}\right).
 \]
 
-# ./scp2_jupyterlab_launcher.png https://paul-grillenberger.de/wp-content/uploads/2019/12/scp2_jupyterlab_launcher.png
 * Applying the TF-IDF transformation (Transcript of [[https://github.com/waveFrontSet/machine-learning-scp/blob/master/notebooks/tfidf.ipynb][jupyter notebook session]])
   :PROPERTIES:
   :CUSTOM_ID: Applying-the-TF-IDF-transformation

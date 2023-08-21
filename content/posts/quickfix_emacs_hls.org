@@ -57,4 +57,3 @@ with its vim emulation *Evil Mode*.
 * Further reading
   - [[http://vimcasts.org/][Drew Neil's vimcasts web page with lots of great videos on how to use vim effectively.]]
 
-# ./quick_emacs_hls_search_results.png https://paul-grillenberger.de/wp-content/uploads/2019/07/quick_emacs_hls_search_results.png

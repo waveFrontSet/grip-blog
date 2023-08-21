@@ -22,7 +22,7 @@ jupyter nbconvert notebook.ipynb --execute --to pdf
 #+END_SRC
 
 I stumbled upon the following problem when I tried to create a =make= target for
-the [[https://paul-grillenberger.de/?p=222][SCP project]]. The =make= target should do the following: It should clear the
+the [[{{< ref "/posts/scp0_overview.org" >}}][SCP project]]. The =make= target should do the following: It should clear the
 output of a specified notebook, execute it and then export it as a pdf file.
 
 * Problem description

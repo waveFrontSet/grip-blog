@@ -8,7 +8,7 @@ title: "Classifying SCPs, Part 1: Building a web crawler"
 url: /2019/11/24/classifying-scps-part-1-building-a-web-crawler/
 ---
 
-This first blog post in the series of [[https://paul-grillenberger.de/?p=222][our Data Science project of classifying
+This first blog post in the series of [[{{< ref "/posts/scp0_overview.org" >}}][our Data Science project of classifying
 SCPs]]
 is concerned with the starting point of any data-related problem, really:
 How do we obtain data? Fortunately, the data we want to build a Machine Learning

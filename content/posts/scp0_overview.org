@@ -23,9 +23,9 @@ This post will give you an overview over the techniques and tools that will be
 used. Feel free to directly jump to the follow-up posts and return to this blog
 post whenever you need instructions on a certain tool.
 
-- [[https://paul-grillenberger.de/?p=222][Part 0: Overview (this post)]]
-- [[https://paul-grillenberger.de/?p=211][Part 1: Building a webcrawler]]
-- [[https://paul-grillenberger.de/?p=420][Part 2: Transform data using term frequency inverse document frequency (TF-IDF)]]
+- [[{{< ref "/posts/scp0_overview.org" >}}][Part 0: Overview (this post)]]
+- [[{{< ref "/posts/scp1-webcrawl.org" >}}][Part 1: Building a webcrawler]]
+- [[{{< ref "/posts/scp2-transformation.org" >}}][Part 2: Transform data using term frequency inverse document frequency (TF-IDF)]]
 - Part 3: Train a Machine Learning model and tune its hyper-parameters
 * The task: Classifying SCPs
 The heart of the website http://scp-wiki.wikidot.com/ consists of articles

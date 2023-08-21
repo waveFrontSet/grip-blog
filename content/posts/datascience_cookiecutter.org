@@ -9,7 +9,7 @@ url: /2019/12/29/why-i-plan-on-moving-away-from-the-data-science-cookiecutter-te
 ---
 
 The [[https://github.com/drivendata/cookiecutter-data-science][Data Science Cookiecutter template]] is a great way to quickly set up your
-Data Science project. For instance, I have used and recommended it for my [[https://paul-grillenberger.de/2019/11/10/a-machine-learning-project-classifying-scps-overview/][Machine Learning
+Data Science project. For instance, I have used and recommended it for my [[{{< ref "/posts/scp0_overview.org" >}}][Machine Learning
 project]] as well as for a Data Analysis project at work.
 In this blog post, I want to emphasize four reasons why I created [[https://github.com/waveFrontSet/grip-on-data-science][my own fork]]
 and will stop using the Data Science Cookiecutter template for future projects.

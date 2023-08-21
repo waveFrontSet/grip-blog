@@ -1,0 +1,120 @@
+---
+id: 485
+date: "2020-01-05T21:00:00Z"
+tags:
+  - programming
+title: "Effective Python 2nd Edition: What's new?"
+url: /2020/01/05/effective-python-2nd-edition-whats-new/
+---
+
+/Effective Python/ by Brett Slatkin is a book filled with best practices
+of the Python programming language. I devoured the first edition as
+an ebook and was eager to buy the second edition as a physical book. Having
+skimmed through it, I was already satisfied. The new edition features updates,
+the removal of all Python 2 specific hints and workarounds.
+More specifically, it concentrates on language features of Python 3 up to and
+including Python 3.8.
+
+However, I was a little confused that there was no tabular information about
+the additions and the changes. Certainly, it looks like
+each item was changed in one way or another (as most items in the first edition
+contained workarounds for Python 2). But if you are like me, owning the first
+edition of the book and wondering if the new content will be worth it, this blog
+post got you covered.
+
+In case you want to do the comparison yourself, there is a table of contents of
+the 2nd edition on the [[https://effectivepython.com/][main page of the official web site of the book]].
+
+#+TOC: headlines 2
+
+* Entirely new items in Effective Python 2nd Edition
+
+There are 27 entirely new items.
+
+- Item 4: Prefer Interpolated F-Strings Over C-style Format Strings and =str.format=
+- Item 6: Prefer Multiple Assignment Unpacking Over Indexing
+- Item 10: Prevent Repetition with Assignment Expressions
+- Item 13: Prefer Catch-All Unpacking Over Slicing
+- Item 14: Sort by Complex Criteria Using the =key= Parameter
+- Item 15: Be Cautious When Relying on =dict= Insertion Ordering
+- Item 16: Prefer =get= Over =in= and =KeyError= to Handle Missing Dictionary Keys
+- Item 17: Prefer =defaultdict= Over =setdefault= to Handle Missing Items in Internal State
+- Item 18: Know How to Construct Key-Dependent Default Values with =__missing__=
+- Item 19: Never Unpack More Than Three Variables When Functions Return Multiple Values
+- Item 29: Avoid Repeated Work in Comprehensions by Using Assignment Expressions
+- Item 33: Compose Multiple Generators with =yield from=
+- Item 34: Avoid Injecting Data into Generators with =send=
+- Item 35: Avoid Causing State Transitions in Generators with =throw=
+- Item 36: Consider =itertools= for Working with Iterators and Generators
+- Item 51: Prefer Class Decorators Over Metaclasses for Composable Class Extensions
+- Item 56: Know How to Recognize When Concurrency Is Necessary
+- Item 57: Avoid Creating New Thread Instances for On-demand Fan-out
+- Item 58: Understand How Using =Queue= for Concurrency Requires Refactoring
+- Item 59: Consider =ThreadPoolExecutor= When Threads Are Necessary for Concurrency
+- Item 61: Know How to Port Threaded I/O to =asyncio=
+- Item 62: Mix Threads and Coroutines to Ease the Transition to =asyncio=
+- Item 63: Avoid Blocking the =asyncio= Event Loop to Maximize Responsiveness
+- Item 74: Consider =memoryview= and =bytearray= for Zero-Copy Interactions with bytes
+- Item 79: Encapsulate Dependencies to Facilitate Mocking and Testing
+- Item 89: Consider =warnings= to Refactor and Migrate Usage
+- Item 90: Consider Static Analysis via =typing= to Obviate Bugs
+
+* Items heavily updated in Effective Python 2nd Edition
+Most updates to existing items are to only cover code samples for Python 3.7 with some
+notable exceptions that show 3.8 exclusive samples (the most prominent being the
+introduction to the /walrus operator/ in items 10 and 29). Most noteworthy, the
+first item /Know Which Version of Python You're Using/ already makes it clear at
+the end of the first paragraph:
+
+#+begin_quote
+This book does not cover Python 2.
+#+end_quote
+
+Keeping this in mind, we expect to see some updates. For instance, /Item 3: Know the
+Differences Between =bytes= and =str=/ does not mention the Python 2 exclusive
+=unicode= anymore. Even so, there are certain items that have been updated so
+much that they contain /new advice/ because of newly added language features.
+In particular, I want to mention the following items in this regard.
+
+- Item 48: Validate Subclasses with =__init_subclass__= (former /Item 33: Validate Subclasses with Metaclasses/)
+- Item 49: Register Class Existence with =__init_subclass__= (former /Item 34: Register Class Existence with Metaclasses/)
+- Item 50: Annotate Class Attributes with =__set_name__= (former /Item 35: Annotate class attributes with Metaclasses/)
+- Item 60: Achieve Highly Concurrent I/O with Coroutines (former /Item 40: Consider Coroutines to Run Many Functions Concurrently/)
+
+While the first three items in this list introduce new language features
+restricting the use cases for Metaclasses, the last one was updated to show the
+new way of defining Coroutines using the [[https://docs.python.org/3.8/library/asyncio.html?module-asyncio][=asyncio= built-in module]]. Since this last item
+and the preceding items 56-59 feature Conway's /Game of Life/ as an example, you
+might also argue that item 60 belongs in the next section.
+
+* Items that have been split up into multiple more elaborate items
+There are two items from the first edition that have been split into multiple
+items in the 2nd edition:
+
+- /Item 46: Use Built-In Algorithms and Data Structures/ has been split up into
+  + Item 71: Prefer =deque= for Producer–Consumer Queues
+  + Item 72: Consider Searching Sorted Sequences with =bisect=
+  + Item 73: Know How to Use =heapq= for Priority Queues
+- /Item 56: Test Everything with =Unittest=/ has been split up into
+  + Item 76: Verify Related Behaviors in =TestCase= Subclasses
+  + Item 77: Isolate Tests from Each Other with =setUp=, =tearDown=, =setUpModule=, and =tearDownModule=
+  + Item 78: Use Mocks to Test Code with Complex Dependencies
+
+Item 46 from the first edition had more of an overview character, introducing
+data types from built-in modules. The corresponding items from the 2nd
+edition are more elaborate and provide an in-depth view with more code samples
+and example use cases.
+
+Considering the importance of testing generally and particularly in dynamically
+typed languages such as Python, I found item 56 from the first edition to be
+too brief. In contrast, the new items are much more elaborate on the best practices in
+testing. Above all, item 78 about Mocks is a precious addition, giving
+an example of how to use the [[https://docs.python.org/3.8/library/unittest.mock.html][=unittest.mock= built-in module]] to write unit tests
+for code depending on a database connection.
+
+* Conclusion
+To sum it up, /Effective Python 2nd Edition/ adds a lot of new content in
+comparison to its first edition. More
+precisely, there are 27 entirely new items. Additionally, two items have been
+split up into multiple, more elaborate items so that the new edition clocks in
+at 90 items in comparison to 59 items from the first edition.

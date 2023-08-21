@@ -1,3 +1,42 @@
-baseURL = 'http://example.org/'
+baseURL = 'https://paul-grillenberger.de'
+disablePathToLower = true
 languageCode = 'en-us'
-title = 'My New Hugo Site'
+title = 'GriP on math, music, and programming'
+theme = 'hugo-coder'
+math = true
+
+[params]
+author = "Paul Grillenberger"
+info = "Lead Engineer, Nerd, and mathematician at heart"
+description = "Nerdy thoughts and explanations of math, music, and programming"
+keywords = "blog,developer,personal"
+since = "2019"
+
+math = true
+
+colorScheme = "auto"
+hidecoloschemetoggle = false
+
+[[params.social]]
+name = "GitHub"
+icon = "fa fa-github fa-2x"
+weight = 1
+url = "https://github.com/waveFrontSet/"
+[[params.social]]
+name = "LinkedIn"
+icon = "fa fa-linkedin fa-2x"
+weight = 2
+url = "https://www.linkedin.com/in/paul-grillenberger-535a20264"
+
+[[menu.main]]
+name = "Blog"
+weight = 1
+url = "posts/"
+
+[markup]
+[markup.highlight]
+anchorLineNos = true
+lineAnchors = "lineNo"
+lineNos = true
+lineNumbersInTable = false
+style = 'solarized-dark'

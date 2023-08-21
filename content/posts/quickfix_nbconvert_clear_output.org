@@ -1,0 +1,48 @@
+---
+id: 449
+date: 2019-12-08T20:00:00Z
+tags:
+  - programming
+  - machine learning
+  - quickfix
+title: "Quickfix: jupyter nbconvert with clear-output flag not working"
+url: /2019/12/08/quickfix-jupyter-nbconvert-with-clear-output-flag-not-working/
+---
+
+Jupyter comes with a command line utility /jupyter nbconvert/ that can transform
+a jupyter notebook into different formats. Furthermore, it has
+options to tweak the output. For instance, the =execute= flag executes the
+notebook before transforming it while the =clear-output= flag is supposed to
+remove outputs from the notebook. Thus, if you want to execute the notebook
+=notebook.ipynb= and transform it into a pdf file afterwards, you can issue the
+command
+#+caption: Example usage of =nbconvert=
+#+BEGIN_SRC
+jupyter nbconvert notebook.ipynb --execute --to pdf
+#+END_SRC
+
+I stumbled upon the following problem when I tried to create a =make= target for
+the [[https://paul-grillenberger.de/?p=222][SCP project]]. The =make= target should do the following: It should clear the
+output of a specified notebook, execute it and then export it as a pdf file.
+
+* Problem description
+In contrast to its purpose, the =clear-output= flag does not remove the output
+from any notebook. Suppose your Jupyter notebook is =notebook.ipynb=. Then,
+#+caption: Does not work: Using the =clear-output= flag
+#+BEGIN_SRC
+jupyter nbconvert --clear-output notebook.ipynb
+#+END_SRC
+merely saves the file =notebook.ipynb= again. The output remains in the notebook.
+* Solution
+Unfortunately, this still seems to be an [[https://github.com/jupyter/nbconvert/issues/822][open issue]]. However, there is a more
+specific version of the command available that does exactly what we want:
+#+caption: Works: Using more specific options
+#+BEGIN_SRC
+jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace notebook.ipynb
+#+END_SRC
+It is not clear to me what the current status of the issue is; in fact, there are [[https://github.com/RMeli/WTcourse/commit/ca12c43c126468d66fc25e7e5a8c0d65e1a28419][recent
+commits in other projects referencing the issue]] and the issue itself is labeled
+as /upstream/. Apparently, a dependency ([[https://github.com/ipython/traitlets][traitlets]]) is causing this bug.
+* Further reading
+- [[https://nbconvert.readthedocs.io/en/latest/][Documentation of =jupyter nbconvert=]]
+- [[https://github.com/jupyter/nbconvert/issues/822][Open issue dealing with the =clear-output= flag]]

@@ -1,0 +1,51 @@
+---
+id: 197
+date: 2019-09-09T19:30:00Z
+tags:
+  - quickfix
+title: "Quickfix: 'Push rejected' when deploying a Python app on heroku"
+url: /2019/09/09/quickfix-push-rejected-when-deploying-a-python-app-on-heroku/
+---
+[[http://www.heroku.com][Heroku]] is a platform that enables you to deploy your web application in a quick
+and painless manner; unless you're stumbling upon a 'Push rejected' error with
+next to no hint how to resolve it.
+
+* Problem description
+I stumpled upon this when trying to deploy a [[http://www.flask.com][flask]] app but I'm pretty sure this
+will also happen with [[http://www.django.com][django]] apps. Here's what happened: When deploying to
+heroku you first have to initialize a git repository. For Python apps in
+particular, you also have to provide a ~requirements.txt~ that consists of the
+dependencies of your application. This is a pretty standard. What was new to me
+that you also have to provide a ~runtime.txt~ that tells heroku which Python
+version your app was written in. As naive as I was, I merely checked for the
+Python version in my Anaconda environment and put python-3.7.4 in the file,
+committed and pushed to heroku via ~git push heroku master~. Here's what I got
+back:
+
+#+BEGIN_src
+remote: Compressing source files... done.
+remote: Building source:
+remote:
+remote: -----> Python app detected
+remote:  !     Python has released a security update! Please consider upgrading to python-3.7.3
+remote:        Learn More: https://devcenter.heroku.com/articles/python-runtimes
+remote: -----> Installing python-3.7.4
+remote: -----> Installing pip
+remote: -----> Installing requirements with pip
+remote:  !     Push rejected, failed to compile Python app.
+remote:
+remote:  !     Push failed
+#+END_src
+
+That was not helpful at all. Especially the hint at /upgrading/ to python-3.7.3
+was confusing me because my proposed runtime was even more recent. The build log
+did not reveal anything new either.
+[[/images/heroku_build_log.png]]
+
+* Solution
+After being confused for about half an hour, suspecting that heroku could not
+cope with my requirements at first, at finally found out that *heroku does not support python-3.7.4 as a runtime!* In fact, heroku only supports [[https://devcenter.heroku.com/articles/python-support#supported-runtimes][three specific
+python runtimes at the moment]]. Thus, the solution is to simply use
+~python-3.7.3~ as a runtime.
+
+# ./heroku_build_log.png https://paul-grillenberger.de/wp-content/uploads/2019/09/heroku_build_log.png

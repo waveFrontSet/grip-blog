@@ -1,0 +1,79 @@
+---
+id: 111
+date: 2019-07-14T18:58:00Z
+tags:
+  - programming
+  - java
+  - quickfix
+  - lombok
+title: "Quickfix: Using Lombok with IntelliJ causes compiler error “cannot resolve method”"
+url: /2019/07/14/quickfix-using-lombok-with-intellij-causes-compiler-error-cannot-resolve-method/
+---
+
+Quickfixes are short posts that deal with small problems that I encounter and
+their solutions. This blog post is about a small nuisance I stumpled about when
+using the Java library Lombok in conjuction with the IDE IntelliJ.
+
+* Problem description
+To understand the problem, we first need to know what the library Lombok is all
+about.
+** About Lombok
+Lombok is a library that reduces boilerplate code when using the Java
+programming language. In comparison with modern script languages such as Python
+or Ruby, Java tends to be overly verbose: In order to create a class with a few
+attributes serving as a data object, one needs to create numerous getters and
+setters as well as custom ~equals~ and ~hashCode~ implementations. Of course, the
+Java IDE landscape has reacted to this kind of problem a long time ago by
+equipping IDE users with several ways to generate these methods on demand.
+
+However, maintaining such data classes can still be hassle: Just imagine a
+programmer quickly adding one or more attributes to a data class because a new
+feature needs to be implemented that relies on those. They surely will remember
+to generate the getters and setters because otherwise they won't be able to
+access the new attributes. They might miss to update the ~toString~
+method or the ~equals~ and ~hashCode~ methods, though, and what gives? All tests might pass and
+everything could be fine for a while. But then a bug is discovered that either
+might be related to the equals method not reflecting the newly added attributes that could potentially lead to
+overwriting data entities in collections or a crucial log message does not give
+a programmer the values of the added attributes because the ~toString~ method has
+not been updated.
+
+Lombok deals with these problems by generating getters, setters, constructors,
+useful ~toString~ methods as well as ~equals~ and ~hashCode~ implementions in the
+build process of your app. Integrating Lombok, say, in a Gradle build, is as
+easy as adding
+#+BEGIN_src
+compileOnly 'org.projectlombok:lombok'
+#+END_src
+to the dependencies of your build.gradle file. Afterwards, a data class may be
+written as follows:
+#+BEGIN_src java
+import lombok.*;
+
+@Data
+@NoArgsConstructor
+@RequiredArgsConstructor
+class Account {
+  private @NonNull String accNumber;
+  private double saldo;
+}
+#+END_src
+The annotation ~@Data~ gives you getters and setters for all attributes of your
+class as well as a ~toString~, a ~hashCode~ and an ~equals~ implementation. The
+annotations ~@NoArgsConstructor~ and ~@RequiredArgsConstructor~ give you the
+standard constructor as well as a constructor with all the required fields (in
+this case, all fields annotated as ~@NonNull~).
+
+** The problem
+Using the data class without further ado in IntelliJ might lead to a compiler
+error (even though the gradle build will go through just fine): If we were to
+use the method ~setAccNumber~, for instance, IntelliJ would remark that it
+"cannot resolve method ~setAccNumber~".
+
+* The solution
+Install the IntelliJ Lombok plugin by searching for "Lombok" in Preferences ->
+Plugins and hitting install on the first hit. The compiler error should
+disappear after restarting IntelliJ.
+* Further reading
+- [[https://stackoverflow.com/questions/40151410/intellij-highlights-lombok-generated-methods-as-cannot-resolve-method][Stackover flow post dealing with the same problem]]
+- [[https://projectlombok.org/][Official page of Project Lombok]]

@@ -1,0 +1,60 @@
+---
+id: 122
+date: 2019-07-21T13:09:00Z
+tags:
+  - programming
+  - quickfix
+  - vim
+  - emacs
+title: "Quickfix: Muting search highlights in Emacs Evil mode"
+url: /page/2/
+---
+
+This quickfix is about muting search highlights when using the text editor Emacs
+with its vim emulation *Evil Mode*.
+* Problem description
+  Sometimes the quickest way to navigate through a file with vim is to enter a
+  search term and work your way through the search results if necessary. Search
+  highlighting may assist you by providing a visual clue as to what your current
+  found result is and where the next results are. 
+  [[/images/quick_emacs_hls_search_results.png]]
+  However, as soon as the cursor is in your desired position, search
+  highlighting persists and can become a nuisance. Fortunately, there is a quick
+  way to mute it on demand: The ~:noh~ command (short for ~:nohlsearch~) has
+  exactly this purpose. If you want an even more comfortable solution, you can
+  create a custom shortcut in vim. Drew Neil suggests in Tip 80 of his book
+  /Practical Vim/ to bind the ~:noh~ command as an add-on to the key combination
+  ~Ctrl+l~:
+  #+begin_src
+  nnoremap <silent> <C-l> :<C-u>nohlsearch<CR><C-l>
+  #+end_src
+  This makes sense because ~Ctrl+l~ normally redraws the buffer in vim and
+  muting of search highlights is a sensible feature to add.
+  In Emacs, we may do the same and bind ~Ctrl+l~ to a macro executing the
+  strokes ~:noh~ in evil normal state. However, there is a slightly faster
+  solution available.
+* Solution
+  The variable ~evil-ex-commands~, as its name suggests, contains the
+  information which ex command corresponds to which lisp function. A quick
+  call to describe variable (shortcut ~Ctrl+h Ctrl+v~) and a search for "nohl"
+  yield that ~:noh~ call the lisp function ~evil-ex-nohighlight~. Thus,
+  #+begin_src elisp
+;;; Shortcut for muting search highlighting
+(define-key evil-normal-state-map (kbd "C-l") 'evil-ex-nohighlight)
+  #+end_src
+  is the desired solution. Note that the standard behaviour of ~Ctrl+l~ in Emacs
+  is to recenter the viewpoint at bottom, top or original center, a
+  functionality which I personally do not need since Evil mode provides some
+  alternatives (for example, ~H~, ~M~, and ~L~ jump to the top, center, and
+  bottom, respectively, of the current buffer and ~zz~ centers the current
+  cursor position vertically). However, if you also want to redraw the buffer
+  just like in the vim solution the elisp function ~redraw-frame~ seems to do
+  the trick. 
+  #+begin_src elisp
+;;; Shortcut for redrawing the current frame/buffer and muting search highlighting
+(define-key evil-normal-state-map (kbd "C-l") (progn 'redraw-frame 'evil-ex-nohighlight))
+  #+end_src
+* Further reading
+  - [[http://vimcasts.org/][Drew Neil's vimcasts web page with lots of great videos on how to use vim effectively.]]
+
+# ./quick_emacs_hls_search_results.png https://paul-grillenberger.de/wp-content/uploads/2019/07/quick_emacs_hls_search_results.png

@@ -6,6 +6,7 @@ tags:
   - probability theory
   - learning diary
 date: 2019-08-03T13:57:00
+url: /2019/08/03/bayes-classifier/
 ---
 
 The Bayes classifier is a Data Scientist's unbeatable arch enemy.

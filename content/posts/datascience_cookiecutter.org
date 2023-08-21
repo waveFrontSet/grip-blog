@@ -1,0 +1,73 @@
+---
+tags:
+  - programming
+  - machine learning
+title: Why I created my own fork of the Data Science Cookiecutter template machine learning
+id: 443
+date: "2019-12-29T20:00:00Z"
+url: /2019/12/29/why-i-plan-on-moving-away-from-the-data-science-cookiecutter-template/
+---
+
+The [[https://github.com/drivendata/cookiecutter-data-science][Data Science Cookiecutter template]] is a great way to quickly set up your
+Data Science project. For instance, I have used and recommended it for my [[https://paul-grillenberger.de/2019/11/10/a-machine-learning-project-classifying-scps-overview/][Machine Learning
+project]] as well as for a Data Analysis project at work.
+In this blog post, I want to emphasize four reasons why I created [[https://github.com/waveFrontSet/grip-on-data-science][my own fork]]
+and will stop using the Data Science Cookiecutter template for future projects.
+
+* The reasons
+** The project repository is moving slowly
+As of this writing, there have been [[https://github.com/drivendata/cookiecutter-data-science/commits/master][5 accepted commits in the =master= branch in
+2019]].
+Certainly, one could argue that this is due to the project being stable and
+close to being finished. In contrast, however, there are [[https://github.com/drivendata/cookiecutter-data-science/issues][30 open issues]] and [[https://github.com/drivendata/cookiecutter-data-science/pulls][11
+pull requests]] with a lot of discussion. In particular, there is an [[https://github.com/drivendata/cookiecutter-data-science/pull/162][approved pull request]]
+that encompasses multiple feature requests. Even so, it has not been merged into
+master as of this writing and is open since March 2019.
+** The Data Science Cookiecutter template does not provide you with a test setup
+Second, there is no test setup at the moment. There is an [[https://github.com/drivendata/cookiecutter-data-science/pull/187/files][open pull request]] that
+suggests on adding a test folder parallel to the project folder.
+** The Data Science Cookiecutter template does not provide you with a choice of requirements management
+Third, even though there is a =requirements.txt= in the Cookiecutter template
+with sensible defaults, it might not work on your system. For instance, I cannot
+install =scikit-learn= via =pip=. Instead, I have to rely on using =conda=.
+Unfortunately, the template does not provide me with an option to choose the
+package manager. Again, there is a [[https://github.com/drivendata/cookiecutter-data-science/issues/118][lot of discussion in an open issue]].
+** There are no pre-defined =make= targets for recurring tasks
+Finally, there are tasks that you will deal with time and time again like
+splitting your dataset into a train and a test set, train a collection of models
+on the train set and, finally, evaluate them on the test set. Apart from the
+choice of which models to train and what kinds of metrics to use to evaluate
+them, these tasks are the same everytime. Consequently, they should be automated
+via =make= targets.
+* Alternatives to the Data Science Cookiecutter template
+If you have read this far and have agreed with (some of) the reasons, you might
+wonder what alternatives to using the Data Science Cookiecutter templates there
+are. In fact, there are a lot: As of this writing, there are [[https://github.com/drivendata/cookiecutter-data-science/network/members][943 forks of the
+project on github]]. I am particularly fond of the [[https://github.com/hackalog/cookiecutter-easydata][Cookiecutter EasyData template]].
+It provides you with a rich setup of additional =make= targets as well as
+support for =conda='s =environment.yml=. Furthermore, there is lots of example
+code for data transformations. As for the cons, I find the test setup too
+minimal. More precisely, the [[https://github.com/hackalog/cookiecutter-easydata/tree/master/%7B%7B%20cookiecutter.repo_name%20%7D%7D/%7B%7B%20cookiecutter.module_name%20%7D%7D][code supplied in the project folder]] is not tested.
+Instead, there is [[https://github.com/hackalog/cookiecutter-easydata/blob/master/%7B%7B%20cookiecutter.repo_name%20%7D%7D/%7B%7B%20cookiecutter.module_name%20%7D%7D/test_example.py][one single test file]] illustrating testing with python's
+builtin =unittest= module. Plus, usage of the project template seems to be quite
+sophisticated and it is not well-documented enough. After the maintainers have
+finished the [[https://github.com/hackalog/bus_number][tutorial project]], this might be a good choice. I'll definitely keep
+an eye on this project!
+
+After evaluating a few more templates, each with their own strengths and
+weaknesses, I have finally decided to fork the Data Science Cookiecutter
+template to add the functionality I need myself. I suggest that you do too:
+Think of all the Data Science projects you have done so far and answer the
+following question: What kind of functionality did you need in /all/ of them?
+Then, build that functionality into the Data Science Cookiecutter template
+yourself. As already mentioned, there are lots of examples to gain inspiration
+from. Additionally, the process of building the template yourself and thinking
+about it may expose weaknesses and bottlenecks of your current workflow: You may
+realize that in all of your projects you have spent time on a task that can be
+automated via a =make= target!
+
+To sum it up, building your own Data Science template over time with the Data
+Science Cookiecutter template as a starting point will get rid of its weaknesses
+and empower your own Data Science workflow. If you need some inspiration, check
+out the forks of the Data Science Cookiecutter template. For reference, here is
+my own fork: [[https://github.com/waveFrontSet/grip-on-data-science][GriP on Data Science]].

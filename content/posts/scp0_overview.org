@@ -1,0 +1,101 @@
+---
+id: 222
+date: 2019-10-20T12:54:00Z
+tags:
+  - machine learning
+  - programming
+title: "A Machine Learning Project: Classifying SCPs, Part 0, Overview"
+url: /2019/10/20/a-machine-learning-project-classifying-scps-overview/
+---
+
+Tutorials on Machine Learning tend to emphasize the process of training models,
+interpreting their scores and tuning hyper-parameters. While these are certainly
+important tasks, most tutorials
+and documentations are not concerned with how the data is obtained; mostly, a
+toy data set is used that is provided by the Machine Learning library.
+
+In a series of at least 3 blog posts I would like to document a Machine Learning
+project of mine from start to finish: We will start from scratch, write a
+Web crawler to obtain data, polish and transform it and finally apply the Machine
+Learning techniques above.
+
+This post will give you an overview over the techniques and tools that will be
+used. Feel free to directly jump to the follow-up posts and return to this blog
+post whenever you need instructions on a certain tool.
+
+- [[https://paul-grillenberger.de/?p=222][Part 0: Overview (this post)]]
+- [[https://paul-grillenberger.de/?p=211][Part 1: Building a webcrawler]]
+- [[https://paul-grillenberger.de/?p=420][Part 2: Transform data using term frequency inverse document frequency (TF-IDF)]]
+- Part 3: Train a Machine Learning model and tune its hyper-parameters
+* The task: Classifying SCPs
+The heart of the website http://scp-wiki.wikidot.com/ consists of articles
+about fictional objects with abnormal behaviour, so-called SCPs (short for
+"Secure, Contain, Protect"). The fictional SCP foundation aims to contain these
+objects and, if possible, research their potential uses.
+  
+[[/images/scp0_example.png]]
+
+Each article follows a fixed format starting with the *Item #*. The second
+paragraph, the *Object Class*, is our prediction target. The following
+paragraphs, consisting of *Special Containment Procedures*, a *Description*,
+and, optionally, further information and addenda, are the data we will use to
+train a model upon.
+** A deeper look at the Object Class
+As explained by [[http://www.scp-wiki.net/object-classes][the Object Classes guide]], an Object Class is a "rough indicator
+for how difficult an object is to contain." The five primary classes are /Safe/
+(easy to contain with next to no resources), /Euclid/ (requires some resources
+to contain), /Keter/ (difficult to contain even with a lot of resources),
+/Thaumiel/ (used to contain /other/ SCPs) and /Neutralized/ (not anomalous
+anymore). While there are many Safe-class and Euclid-class SCPs, Thaumiel-class
+and neutralized SCPs seem to be very rare. Chances are that a Machine Learning
+model won't be able to learn what makes up a Thaumiel-class or a neutralized
+SCP. Consequently, we will concentrate on classifying SCPs as Safe, Euclid or
+Keter for starters and ignore the other Object Classes first.
+* The tools
+Of course, without an appropriate tool set this task would be hopeless. As the
+programming language Python provides us with a plethora of Machine Learning
+frameworks (Tensorflow, PyTorch, Scikit-Learn, ...), using it will be a safe
+choice. But how do we organize our project? What libraries do we use?
+Fortunately, we are not the first human beings wondering about these issues.
+In the following, I will give you an overview of the tools we will use and try
+to explain my decision for them.
+** Project template: Data Science Cookiecutter
+The [[https://github.com/drivendata/cookiecutter-data-science][Data Science Cookiecutter]] project template is our framework. We are given
+an organized folder structure, dividing data from data exploration,
+documentation and utility code. Furthermore, the template defines several
+make targets and provides instructions on how to extend them. By the way,
+if you have never heard of Cookiecutter templates before you will surely find
+other useful templates in [[https://cookiecutter.readthedocs.io/en/latest/readme.html#available-cookiecutters][the Cookiecutter documentation]]. After installing
+cookiecutter via =pip=, using templates is a breeze: If you want to start a
+new Data Science project based on the template mentioned before, simply fire
+the command
+#+caption: Easy as pie
+#+name: Cookiecutter example
+#+BEGIN_SRC bash
+cookiecutter https://github.com/drivendata/cookiecutter-data-science
+#+END_SRC
+** Environment and dependency management: Anaconda
+Each Data Science project comes with its own demands and dependencies. To
+manage those, we will use [[https://www.anaconda.com/distribution/][the Anaconda distribution]]. While the associated
+command line tool, =conda=, may serve as a package manager and comes with
+several Data Science libraries pre-compiled, you can also use the standard
+python package manager =pip= from within a conda environment.
+** Data exploration: Jupyter Notebooks
+[[https://jupyter.org][Jupyter Notebooks]] are a wonderful way to combine data exploration code
+together with its documentation. Sharing them gives others the opportunity to
+run the code themselves and check the results. Jupyter notebooks support
+markdown, $\LaTeX$, can install Python libraries on-the-fly via
+[[https://ipython.readthedocs.io/en/stable/interactive/magics.html][Magic commands]] and can be converted to other formats such as pdf or html. If
+you have never heard of them but know how to use Python, you have definitely
+missed something! The [[https://jakevdp.github.io/PythonDataScienceHandbook/index.html][Python Data Science Handbook]] gives you a nice
+introduction to IPython that forms the base of Jupyter notebooks.
+** Web crawler: Requests and Beautiful Soup
+For the Web crawling task, the
+[[https://requests.kennethreitz.org/en/master/][requests library]] gives us a quick way to obtain data from web servers. To
+parse html, we will use [[https://www.crummy.com/software/BeautifulSoup/bs4/doc/][Beautiful Soup]].
+** Transformations & Machine Learning: Scikit-Learn
+The open source Machine Learning library [[https://scikit-learn.org/stable/][Scikit-Learn]] has everything we need
+and is easy to use. There are plenty of examples on their page, along with
+explanations of the underlying concepts (of course, some math background will
+come in handy if you want to understand them fully).
+

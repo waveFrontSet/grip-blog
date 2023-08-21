@@ -1,0 +1,1049 @@
+---
+id: 420
+date: 2020-03-07T13:00:00Z
+tags:
+  - programming
+  - machine learning
+title: "Classifying SCPs, Part 2: Data transformation (TF-IDF) and preprocessing"
+url: /2020/03/07/classifying-scps-part-2-data-transformation-and-preprocessing/
+---
+
+After we have obtained data through the means described [[https://paul-grillenberger.de/?p=211][in the first part of
+this blog post series]], it is time to deal with data transformations and data preprocessing.
+While humans can comprehend textual information in the form of articles, it is
+hard to digest for a Machine Learning algorithm. In this blog post, we will
+transform the textual information into certain vectors assigning a number to
+each word in the vocabulary of the set of articles: This is what the TF-IDF
+(Term Frequency - Inverse Document Frequency) is all about.
+
+In comparison to the web crawler post, this one is more mathematical in nature.
+Instead of evaluating technical approaches and executing them in a test-driven
+manner, we will have to understand the mathematical background behind the
+algorithm to put it to good use.
+
+To make the transition as gentle as possible, let us do a
+warm-up that is closer to the technical spirit of the last blog post: We use the
+text files produced by the web crawler from the last blog
+post to extract certain lengths of paragraphs and research in what way these
+help us to determine the Object Class of the article.
+
+After we have understood how TF-IDF works, we can use it to transform our
+articles into TF-IDF vectors. Consequently, we will already be able to extract keywords
+from each article.
+
+#+TOC: headlines 2
+
+* Warm-up: Extracting the paragraph lengths
+To structure the text from the articles, let us use a custom class.
+
+** Basic version of the =Article= class
+#+caption: =src/data/article_data.py=
+#+BEGIN_SRC python
+class Article(object):
+    def __init__(self, label, name, procedures, desc):
+        self.label = label.strip()
+        self.name = name.strip()
+        self.procedures = procedures.strip()
+        self.desc = desc.strip()
+#+END_SRC
+
+The logic that splits up the text from the text files into attributes of the
+class will be a =classmethod= that accepts a list of lines of text and returns a
+readily constructed =Article= instance.
+
+#+caption: =src/data/article_data.py=
+#+BEGIN_SRC python
+class Article(object):
+    # __init__ omitted...
+
+    @classmethod
+    def from_text(cls, lines):
+        label, *text = lines
+        text = "".join(text)
+        name, rest = text.split("Special Containment Procedures:")
+        procedures, desc = rest.split("Description:")
+        return cls(label, name, procedures, desc)
+#+END_SRC
+
+Here's a basic test that shows how to use the =classmethod= to obtain an
+=Article= instance.
+
+#+caption: =tests/data/test_article_data.py=
+#+BEGIN_SRC python
+from src.data.article_data import Article
+
+
+def test_from_text():
+    procedures = [
+        "Special Containment Procedures: Something...",
+        "Something part two...",
+    ]
+    description = "Description: Something else..."
+    article = Article.from_text(["SAFE", "Some name   ", *procedures, description])
+    assert article.label == "SAFE"
+    assert article.name == "Some name"
+    assert article.procedures == "Something...Something part two..."
+    assert article.desc == "Something else..."
+#+END_SRC
+
+** Validation of the label through a =@property=
+As mentioned in the [[https://paul-grillenberger.de/?p=211][last first part of this series]], we are only concentrating on the
+labels /SAFE/, /EUCLID/ and /KETER/. To account for this, we need to validate
+that the incoming label is one of those. We are a little more lenient and also
+accept labels that only start with one of those three labels.
+
+Let us write tests first to define the desired behavior.
+
+#+caption: =tests/data/test_article_data.py=
+#+BEGIN_SRC python
+import pytest
+from src.data.article_data import Article
+
+
+@pytest.fixture
+def article():
+    return Article("SAFE", "", "", "")
+
+
+@pytest.mark.parametrize("label", ["SAFE", "EUCLID", "KETER"])
+def test_set_regular_label(article, label):
+    article.label = label
+    assert article.label == label
+    article.label = label + "SOMETHING"
+    assert article.label == label
+
+
+def test_set_unknown_label(article):
+    with pytest.raises(ValueError) as excinfo:
+        article.label = "unknown"
+    assert "unknown" in str(excinfo)
+#+END_SRC
+
+In the tests above, we are using a [[https://docs.pytest.org/en/latest/fixture.html][=fixture=]] that gives us an
+initialized =Article= instance. Then, we are defining the regular behavior of
+the setter (we are expecting the label to accept the three main object classes
+as well as labels that start with those) and what happens when the setter
+encounters an unknown label (we are expecting a =ValueError=, enforced via the
+[[https://docs.pytest.org/en/latest/getting-started.html#assert-that-a-certain-exception-is-raised][=raises=]] helper).
+
+Because we have not written any validation for the =label= attribute yet, the
+tests fail. To account for these kinds of validations, Python has [[https://docs.python.org/3.8/library/functions.html#property][=@property=]]
+decorators that allow for custom getter and setter methods.
+
+#+caption: =src/data/article_data.py=
+#+BEGIN_SRC python
+class Article(object):
+
+    ALLOWED_LABELS = ("SAFE", "EUCLID", "KETER")
+
+    # __init__ omitted...
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, orig_label):
+        labels = [
+            label for label in self.ALLOWED_LABELS if orig_label.startswith(label)
+        ]
+        if not labels:
+            raise ValueError(f"Unknown label '{orig_label}'!")
+        self._label = labels.pop()
+#+END_SRC
+
+The Python interpreter calls the method decorated with =@label.setter= as soon
+as it encounters the line =self.label = label= in the =__init__= method.
+As a result, code that uses this class has to deal with =ValueErrors= when
+constructing instances.
+
+** Adding a =to_dict= method
+While the =Article= class is responsible for extracting information from the
+articles, it is much easier to use a simple dictionary when persisting extracted
+information. That is because the =json= library can serialize Python
+dictionaries directly; additionally, the =pandas= Data Science library is able
+to use dictionaries to construct their main object: a [[https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html][=DataFrame=]].
+As a result, we need to write a =to_dict= method that turns an =Article=
+instance into a plain dictionary. Aside from the four attributes of the
+=Article= class, we also require the dictionary to contain the (character)
+lengths of the Procedures and the Descriptions as well as the Ratio of these two lengths.
+
+#+caption: =tests/data/test_article_data.py=
+#+BEGIN_SRC python
+def test_to_dict_trivial_article(article):
+    d = article.to_dict()
+    assert "Label" in d
+    assert d["Label"] == "SAFE"
+    assert "Name" in d
+    assert "Procedures" in d
+    assert "Description" in d
+    assert "Procedures_Length" in d
+    assert d["Procedures_Length"] == 0
+    assert "Description_Length" in d
+    assert d["Description_Length"] == 0
+    assert "Procedures_Description_Ratio" in d
+    assert d["Procedures_Description_Ratio"] == 0
+
+
+def test_to_dict(article):
+    article.name = "Test"
+    article.procedures = "TestTest"
+    article.desc = "Test"
+    d = article.to_dict()
+    assert "Label" in d
+    assert d["Label"] == "SAFE"
+    assert "Name" in d
+    assert d["Name"] == "Test"
+    assert "Procedures" in d
+    assert d["Procedures"] == "TestTest"
+    assert "Description" in d
+    assert d["Description"] == "Test"
+    assert "Procedures_Length" in d
+    assert d["Procedures_Length"] == 8
+    assert "Description_Length" in d
+    assert d["Description_Length"] == 4
+    assert "Procedures_Description_Ratio" in d
+    assert d["Procedures_Description_Ratio"] == 2
+#+END_SRC
+
+The implementation is straightforward and uses a dictionary
+comprehension.
+
+#+caption: =src/data/article_data.py=
+#+BEGIN_SRC python
+    def to_dict(self):
+        return {
+            "Label": self.label,
+            "Name": self.name,
+            "Procedures": self.procedures,
+            "Description": self.desc,
+            "Procedures_Length": len(self.procedures),
+            "Description_Length": len(self.desc),
+            "Procedures_Description_Ratio": len(self.procedures) / len(self.desc)
+            if len(self.desc) > 0
+            else 0,
+        }
+#+END_SRC
+
+** Using the =Article= class to process the =txt= files
+
+Finally, we want to use the =Article= class to process the text files. More
+precisely, we would like to aggregate the articles into a pandas =DataFrame=.
+This object has a [[https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_json.html#pandas.DataFrame.to_json][=to_json=]] method that allows us to persist it for later introspection.
+
+First, let us write a test to pin down our expectations.
+
+#+caption: =tests/data/test_make_dataset.py=
+#+BEGIN_SRC python
+import pandas as pd
+from click.testing import CliRunner
+from src.data.make_dataset import main
+
+TEST_DATA = {
+    "scp-002.txt": """EUCLID\n
+Item #: 002\n
+Special Containment Procedures: Something something...\n
+Description: Something else...\n
+""",
+    "scp-003.txt": """UNKNOWN\n
+Item #: 003\n
+Special Containment Procedures: Something something...\n
+Description: Something else...\n
+""",
+}
+
+
+def test_main():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        for filename, text in TEST_DATA.items():
+            with open(filename, "w") as f:
+                f.write(text)
+        result = runner.invoke(main, [".", "."])
+        assert result.exit_code == 0
+        df = pd.read_json("data.json")
+        assert len(df.index) == 1
+        data = df.loc[0]
+        assert "Label" in data
+        assert data["Label"] == "EUCLID"
+        assert "Name" in data
+        assert data["Name"] == "Item #: 002"
+        assert "Procedures" in data
+        assert data["Procedures"] == "Something something..."
+        assert "Description" in data
+        assert data["Description"] == "Something else..."
+#+END_SRC
+
+Here, we are using the dictionary =TEST_DATA= to write two files with two mock
+articles. The first is a regular article with a valid object class, the second
+one is an article we do not wish to process. As a result, we expect that only
+one article is present in the processed data. Note that we are using
+pandas' [[https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_json.html#pandas.read_json][=read_json=]] method to obtain a =DataFrame= and, in turn, we are using
+=DataFrame= methods to assure that only one article is present and that the
+article data has been split up correctly.
+
+To make this test pass we have to implement the following strategy:
+
+1. Start with an empty =DataFrame=.
+2. Parse each text file in the =data/raw= folder and turn it into an =Article=.
+3. Use =Article='s =to_dict= method to append the data to the =DataFrame=.
+4. Persist the =DataFrame= to a =json= file in the =data/processed= folder.
+
+Here's a sketch implementation that uses the =pathlib= library's [[https://docs.python.org/3/library/pathlib.html#pathlib.Path.glob][glob function]] to iterate
+through the text files.
+
+#+caption: First sketch of the processing
+#+BEGIN_SRC python
+import pandas as pd
+from pathlib import Path
+from src.data.article_data import Article
+
+
+df = pd.DataFrame({})
+for file in Path("data/raw").glob("scp-*.txt"):
+    with file.open() as f:
+        article = Article.from_text(f.readlines())
+    df = df.append(article.to_dict(), ignore_index=True)
+df.to_json("data/processed/data.json")
+#+END_SRC
+
+From a software design perspective, this code leaves a lot to be desired. First,
+there are no log messages that will come in handy when things are off. Second,
+the paths are hard-coded and should be replaced by function parameters. Third
+and last, the =Article='s classmethod =from_text= throws a =ValueError= each
+time it encounters an article with an unknown object class. We have to deal with
+this kind of situation without letting the entire script fail.
+
+Here's a revision of the sketch.
+
+#+caption: =src/data/make_dataset.py=
+#+BEGIN_SRC python
+import click
+import logging.config
+import pandas as pd
+from pathlib import Path
+from src.data.article_data import Article
+
+
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+logging.config.fileConfig(PROJECT_DIR / "logging_config.ini")
+logger = logging.getLogger(__name__)
+
+
+@click.command()
+@click.argument("input_filepath", type=click.Path(exists=True))
+@click.argument("output_filepath", type=click.Path())
+def main(input_filepath, output_filepath):
+    """ Runs data processing scripts to turn raw data from (../raw) into
+        cleaned data ready to be analyzed (saved in ../processed).
+    """
+    logger.info("making final data set from raw data")
+    df = pd.DataFrame({})
+    for file in Path(input_filepath).glob("scp-*.txt"):
+        logger.info("File: %s", file)
+        with file.open() as f:
+            try:
+                article = Article.from_text(f.readlines())
+            except ValueError as e:
+                logger.warning("ValueError in file %s: %s", file, e)
+                continue
+        df = df.append(article.to_dict(), ignore_index=True)
+    logger.info("DataFrame extracted. Writing to data.json in %s", output_filepath)
+    df.to_json(Path(output_filepath) / "data.json")
+    logger.info("Done.")
+
+
+if __name__ == "__main__":
+    main()
+#+END_SRC
+
+Note that we are emitting log warning messages whenever we encounter an unknown
+label but still continue with the processing.
+
+** Exercises
+Just like in the last blog post, you can rapidly tackle an exercise by using git
+tags. For instance, if you want to tackle the first exercise, issue the command
+=git tag ex-15= and start coding. If you want to compare your solution to mine,
+issue =git diff sol-ex-15= when you have finished.
+*** Git tag: =ex-15= :beginner:
+Add a =__repr__= method to the =Article= class.
+*** Git tag: =ex-16= :beginner:
+Add another test for the =from_text= method. The input shall be the same as in the
+=test_from_text= method except that you will leave out the name ("Some name ").
+Consequently, =assert= that the name of the resulting =Article= instance
+will be an empty string.
+*** Git tag: =ex-17= :intermediate:
+Unfortunately, there are some SCP articles that slightly diverge from the usual
+naming convention for their parts. For instance, [[http://www.scp-wiki.net/scp-524][SCP-524]] has a /Special Containment
+Procedure/ (singular!), [[http://www.scp-wiki.net/scp-2944][SCP-2944]] has /Secure/ Containment Procedures, and
+[[http://www.scp-wiki.net/scp-931][SCP-931]] consists of haiku paragraphs. While we could certainly be a little more
+thorough when parsing them, I will ignore them for the rest of this blog post
+series (I have encountered 130 warnings when parsing the first 3000 SCP
+articles which is less than 0,5% of incorrectly parsed articles).
+However, if you want to, feel free to optimize the parsing procedure. For starters,
+allow for the "Description" part to start with either "Description:" or
+"Summary:". Do not forget to write tests!
+*** Git tag: =ex-18= :intermediate:
+Raise =RuntimeErrors= whenever the Containment Procedures or the Description
+cannot be extracted. Catch these =RuntimeErrors= in =make_dataset.py=, log the
+error and continue with the =for= loop without adding the article to the
+=DataFrame=. Finally, add another test article in =test_make_dataset.py= with an
+unexpected beginning of the description and tests to =test_article_data.py= to
+make sure these =RuntimeErrors= are actually raised.
+
+* Quick analysis of the lengths
+After we have extracted the (character) lengths of the two parts of the SCP
+articles, let us analyze them. We will use =pandas= to load the =json= file and
+compute some basic statistical measures.
+
+Open =jupyter lab= (either by opening a terminal and issuing the command
+=jupyter lab= or by opening Anaconda, switching to the environment for the SCP
+project and open Jupyter Lab there), navigate to the =notebooks= folder of the
+SCP project and click the "+" icon above the folder breadcrumbs to fire up a new launcher.
+
+[[/images/scp2_jupyterlab_launcher.png]]
+
+In the opening Launcher tab, choose a Python 3 Notebook. Now you are all set up
+to experiment with data interactively. The following is a transcript of my
+[[https://github.com/waveFrontSet/machine-learning-scp/blob/master/notebooks/statistics_of_the_lengths.ipynb][Jupyter notebook session]].
+
+** Computing statistics of the lengths
+We want to check that all the transformations we have done so far are
+sane so that we can work with a cleaned up dataset.
+
+#+caption: In[1]
+#+BEGIN_SRC python
+  import pandas as pd
+
+  df = pd.read_json("../data/processed/data.json")
+  df.head()
+#+END_SRC
+
+#+caption: Out[1]
+|     | Description                                         | Description_Length   | Label    | Name               | Procedures                                          | Procedures_Description_Ratio   | Procedures_Length   |
+|-----+-----------------------------------------------------+----------------------+----------+--------------------+-----------------------------------------------------+--------------------------------+---------------------|
+| 0   | SCP-1256 is a 24-page pamphlet entitled 'Bees ...   | 1837                 | SAFE     | Item #: SCP-1256   | Mobile Task Force Zeta-4 ('Beekeepers') is cur...   | 0.224279                       | 412                 |
+| 1   | SCP-2987 is a modified MSI brand external hard...   | 2187                 | SAFE     | Item #: SCP-2987   | SCP-2987 is to be kept on floor 17 of Site-88....   | 0.203475                       | 445                 |
+| 2   | SCP-2039 collectively refers to two distinct f...   | 5399                 | EUCLID   | Item #: SCP-2039   | Presently, Foundation efforts at Research Faci...   | 0.368772                       | 1991                |
+| 3   | SCP-1530 is a two-story abandoned house locate...   | 3893                 | EUCLID   | Item #: SCP-1530   | SCP-1530 is currently contained 120 meters fro...   | 0.201387                       | 784                 |
+| 4   | SCP-1524 is the sole remaining specimen of a s...   | 3211                 | EUCLID   | Item #: SCP-1524   | Both of SCP-1524's individual components are t...   | 0.530364                       | 1703                |
+
+Let's look at some statistics of the extracted text lengths and the
+ratio.
+
+#+caption: In[2]
+#+BEGIN_SRC python
+  df.describe()
+#+END_SRC
+
+
+#+caption: Out[2]
+|         | Description_Length   | Procedures_Description_Ratio   | Procedures_Length   |
+|---------+----------------------+--------------------------------+---------------------|
+| count   | 2700.000000          | 2700.000000                    | 2700.000000         |
+| mean    | 3208.542222          | 0.286840                       | 777.595556          |
+| std     | 1658.345674          | 0.293568                       | 519.808074          |
+| min     | 61.000000            | 0.000000                       | 0.000000            |
+| 25%     | 2104.750000          | 0.145726                       | 414.750000          |
+| 50%     | 2887.000000          | 0.229935                       | 656.500000          |
+| 75%     | 3957.000000          | 0.353646                       | 994.250000          |
+| max     | 31618.000000         | 7.377049                       | 7922.000000         |
+
+Whereas /count/, /mean/, /min/ and /max/ are self-explanatory, /std/ stands for
+/standard deviation/. The rows with percentages are the 25%-, 50%-, and
+75%-/quantiles/, respectively. They were defined in [[https://paul-grillenberger.de/?p=21][my Blog post on means and
+medians]]. Here's a short refresher: The 25%-quantile is a value such that 25%
+of the data is smaller than or equal to it and the other 75% of the data is
+greater than or equal to it. The 50%-quantile is also known as the median.
+
+The minimum
+of 61 characters in Description_Length looks reasonable but a Containment
+Procedure with 0 characters? This has to be investigated. Before we do so, let
+us look at the same statistics but grouped by each label.
+
+
+#+caption: In[3]
+#+BEGIN_SRC python
+  df.groupby("Label").describe().stack()
+#+END_SRC
+
+
+#+caption: Out[3]
+|        |       | Description_Length | Procedures_Description_Ratio | Procedures_Length |
+| Label  |       |                    |                              |                   |
+|--------+-------+--------------------+------------------------------+-------------------+
+| EUCLID | count |        1274.000000 |                  1274.000000 |       1274.000000 |
+|        | mean  |        3244.361852 |                     0.308139 |        855.422292 |
+|        | std   |        1701.660229 |                     0.273383 |        529.896660 |
+|        | min   |         428.000000 |                     0.011165 |        148.000000 |
+|        | 25%   |        2179.250000 |                     0.169438 |        497.250000 |
+|        | 50%   |        2935.500000 |                     0.259065 |        727.000000 |
+|        | 75%   |        3977.750000 |                     0.371186 |       1075.750000 |
+|        | max   |       31618.000000 |                     6.051948 |       7922.000000 |
+| KETER  | count |         314.000000 |                   314.000000 |        314.000000 |
+|        | mean  |        3380.487261 |                     0.401208 |       1128.343949 |
+|        | std   |        1694.007237 |                     0.328462 |        605.260134 |
+|        | min   |         233.000000 |                     0.000000 |          0.000000 |
+|        | 25%   |        2243.000000 |                     0.218239 |        683.250000 |
+|        | 50%   |        3197.500000 |                     0.332694 |       1028.000000 |
+|        | 75%   |        4192.250000 |                     0.486212 |       1449.750000 |
+|        | max   |       10141.000000 |                     3.781726 |       3449.000000 |
+| SAFE   | count |        1112.000000 |                  1112.000000 |       1112.000000 |
+|        | mean  |        3118.951439 |                     0.230143 |        589.388489 |
+|        | std   |        1592.721215 |                     0.293088 |        392.807626 |
+|        | min   |          61.000000 |                     0.010626 |         64.000000 |
+|        | 25%   |        2003.000000 |                     0.118879 |        326.000000 |
+|        | 50%   |        2791.500000 |                     0.178353 |        488.500000 |
+|        | 75%   |        3860.750000 |                     0.277565 |        730.500000 |
+|        | max   |       12331.000000 |                     7.377049 |       3680.000000 |
+
+This is where it starts to get interesting! As /safe/ SCPs are much
+easier to contain than /euclid/ ones which in turn are easier to contain
+than /keter/ SCPs, we expect that the Containment Procedures are easier
+to describe for safe ones and need more elaborate descriptions for keter
+ones. On average, this is reflected in the mean length of Containment
+Procedures (579 for safe, 833 for euclid and 1108 for keter).
+
+Let us turn to the problematic cases of zero lengths.
+
+
+#+caption: In[4]
+#+BEGIN_SRC python
+  df.loc[(df["Procedures_Length"] == 0) | (df["Description_Length"] == 0)]
+#+END_SRC
+
+
+#+caption: Out[4]
+|        | Description                                         | Description_Length   | Label   | Name               | Procedures   | Procedures_Description_Ratio   | Procedures_Length   |
+|--------+-----------------------------------------------------+----------------------+---------+--------------------+--------------+--------------------------------+---------------------|
+| 1340   | SCP-1994 is the general designation for a set ...   | 1376                 | KETER   | Item #: SCP-1994   |              | 0.0                            | 0                   |
+
+Thankfully, this is a single outlier. Investigating the article on the
+SCP Foundation web page and inspecting the html yields that the label
+"Special Containment Procedures" sits in its own =p= element so that we
+were not able to crawl this article correctly.
+
+Let us ignore the outlier.
+
+
+#+caption: In[5]
+#+BEGIN_SRC python
+  df = df.loc[df["Procedures_Length"] > 0]
+#+END_SRC
+
+Finally, let us compute correlations between our features and the target. The
+correlation coefficient may be computed for number-valued random
+variables only. Fortunately, the /nominal/ labels safe, euclid, and keter,
+carry /ordinal/ information. That is to say, we can order them by their
+/containment complexity/. To make this even more explicit, let us assign
+numbers to the three labels. A safe label will be converted to -1, a
+euclid label to 0 and a keter label to 1 so that the order of the
+containment complexity is reflected by $\mathrm{safe} < \mathrm{euclid}
+< \mathrm{keter}$. However, the magnitude of this conversion is still
+open for discussion. We could also have choosen $10^{100}$ for keter and
+this would have influenced the correlation coefficients. But let's stick
+to our simple way of converting for now.
+
+
+#+caption: In[6]
+#+BEGIN_SRC python
+  COMPLEXITY = {
+      "SAFE": -1,
+      "EUCLID": 0,
+      "KETER": 1
+  }
+
+  def compute_complexity(label):
+      return COMPLEXITY[label]
+
+  df["Complexity"] = df["Label"].apply(compute_complexity)
+  df.corr()
+#+END_SRC
+
+
+#+caption: Out[6]
+|                                | Description_Length   | Procedures_Description_Ratio   | Procedures_Length   | Complexity   |
+|--------------------------------+----------------------+--------------------------------+---------------------+--------------|
+| Description_Length             | 1.000000             | -0.293831                      | 0.220675            | 0.052532     |
+| Procedures_Description_Ratio   | -0.293831            | 1.000000                       | 0.577548            | 0.188953     |
+| Procedures_Length              | 0.220675             | 0.577548                       | 1.000000            | 0.344329     |
+| Complexity                     | 0.052532             | 0.188953                       | 0.344329            | 1.000000     |
+
+As it turns out, Complexity and Procedures_Length are positively
+correlated which is precisely what we have observed through the
+statistics that we have grouped by label. We also see that
+Description_Length is only very weakly correlated with Complexity: That
+is to say that there is no reason why, say, a safe SCP should not have a
+long description or why a keter SCP could not be described in a short
+manner.
+* Mathematical background behind TF-IDF
+Before we get to enjoy the ease of use of =sklearn='s =Transformer= API to apply
+the TF-IDF transformation, let's try and get some understanding of it first.
+The easiest way to turn words into numbers is to /count them/. As simple as this
+sounds, this idea is the corner stone of the TF-IDF transformation.
+** Word count vectors
+Let me make
+this more precise. Assume that we have articles \(A_1, \dotsc, A_n\). The /vocabulary/
+\(\mathcal{V} = \mathcal{V}_{A_1, \dotsc, A_n}\) is the set of unique words occurring in those
+articles. The set of all of our articles will also be called the /document/.
+For any article \(A\), the /word count function/ is
+\[
+\mathrm{wc}_{A}\colon \mathcal{V} \to \mathbb{N}, \, w \mapsto \text{Number of times
+\(w\) occurs in \(A\)}.
+\]
+
+Once we have fixed the vocabulary, it is possible to turn the word count
+functions into /word count vectors/. First, we merely need to decide on an
+order of the vocabulary---the alphabetic ordering is a canonical choice! As soon
+as we have ordered the vocabulary, we may write it as \(\mathcal{V} = \{w_1,
+\dotsc, w_m\}\), where \(m\) is the total number of words in the vocabulary.
+Finally, we declare that the /word count vector/ of the article \(A\) is
+\[
+v_A = \bigl(\mathrm{wc}_A(w_1), \dotsc, \mathrm{wc}_A(w_m)\bigr).
+\]
+** Normalizing word counts
+Instead of only talking about single words, we can more generally deal with
+/terms/. These can also be sequences of words that appear in our documents.
+Depending on how long those sequences are, they may carry information about the
+context that cannot be inferred from single words alone. Consequently, the word
+count vectors from before may more generally be called /term count vectors/
+(even though this does not seem to be standard language).
+
+In general, vectors have the advantage of being /comparable/ by using distance
+measures such as the Euclidian distance. Depending on the variety of articles
+and the precise application, however, there might be a problem.
+To make this concrete, let me illustrate this by a simple artificial example.
+Take the sentence /"I am sure I am right about this"/ and transform it into a word count
+vector. Using alphabetic ordering, you should end up with the following.
+| word  | about | am | I | right | sure | this |
+|-------+-------+----+---+-------+------+------|
+| count |     1 |  2 | 2 |     1 |    1 |    1 |
+Let us add a second "article" to our document. The text consists of that same
+sentence /twice/. Thus, we obtain
+| word  | about | am | I | right | sure | this |
+|-------+-------+----+---+-------+------+------|
+| count |     2 |  4 | 4 |     2 |    2 |    2 |
+as its word count vector.
+
+If you want to consider these two articles as similar or even the same,
+you will need to normalize the vectors. This means that before comparing two
+word count vectors you will divide them by their length. In this case, this
+approach will lead to the two articles being seen as the same.
+However, there are also reasons for wanting to tell these two articles apart:
+Even if they deal with the same point, the second one puts stronger emphasis on
+it /by repetition/.
+
+To sum it up, depending on the application you might want to think
+about normalization of your word count vectors. In any case, the resulting word
+count vectors will be called /term frequencies/ (even if you did not normalize)
+from now on. This concludes the first half of the TF-IDF transformation.
+** Inverse document frequency
+Term frequency vectors suffer from another problem: Words that
+certainly occur in almost every English article such as "a", "the", and "is" but
+do not carry meaning will influence the similarity of articles. There are two
+ways to deal with this problem (in fact, they are often used in
+conjunction). The first is to simply ignore those words: Create a list of
+so-called /stop words/ that will be ignored when building the vocabulary. The
+second way is to penalize words occurring in almost every article and boost rare
+words. This is precisely what /inverse document frequency/ is doing.
+
+Before we arrive at the precise definition, let us look at it from another
+angle. A word count is a measure that is /local/ to a single article. This means
+that it does not depend on other articles in our document. If a single word
+count is high in that article, this might mean that this is an important word
+that potentially helps characterizing the article. However, if this word count
+is equally high in all the other articles then this word does not help us
+telling this article apart from the others (/if everything is special then
+nothing is/). Thus, there is the need for a trade-off between local measures
+(such as a single word count of a certain article) and /global/ measures.
+
+/Inverse document frequency/ is such a global measure. To define it, let us
+concentrate on a single word \(w\) in our vocabulary. The /document frequency/
+\(\mathrm{df}(w)\) is the number of articles that \(w\) appears in.
+Consequently, the /inverse document frequency/ is \(1/\mathrm{df}(w)\).
+
+Now we are able to describe the TF-IDF transformation as a whole: For any
+article \(A\) in the document, multiply each word count in its word count vector
+with the inverse document frequency. In formulae:
+\[
+\mathrm{TFIDF}(A) = \left(\frac{\mathrm{wc}_A(w_1)}{\mathrm{df}(w_1)}, \dotsc, \frac{\mathrm{wc}_A(w_m)}{\mathrm{df}(w_m)}\right).
+\]
+
+# ./scp2_jupyterlab_launcher.png https://paul-grillenberger.de/wp-content/uploads/2019/12/scp2_jupyterlab_launcher.png
+* Applying the TF-IDF transformation (Transcript of [[https://github.com/waveFrontSet/machine-learning-scp/blob/master/notebooks/tfidf.ipynb][jupyter notebook session]])
+  :PROPERTIES:
+  :CUSTOM_ID: Applying-the-TF-IDF-transformation
+  :END:
+
+Before we apply the TF-IDF transformation, it is obligatory to put aside
+some test data for evaluating our model later. Otherwise, a future
+Machine Learning model would have access to statistics of the entire
+dataset and may deduce statistics of the test dataset afterwards.
+However, the entire purpose of the train-test-split is to evaluate the
+model on data it has not seen before.
+
+
+#+caption: In[1]
+#+BEGIN_SRC python
+  import pandas as pd
+
+  df = pd.read_json("../data/processed/data.json")
+  df = df.loc[df["Procedures_Length"] > 0, [
+      "Label",
+      "Procedures",
+      "Description",
+      "Procedures_Length",
+      "Description_Length",
+      "Procedures_Description_Ratio"
+  ]]
+#+END_SRC
+
+** Making a train-test-split
+   :PROPERTIES:
+   :CUSTOM_ID: Making-a-train-test-split
+   :END:
+
+With =sklearn=, splitting a =DataFrame= reduces to calling the
+=train_test_split= function from the =model_selection= module. The
+=test_size= argument determines the relative size of the test set.
+
+
+#+caption: In[2]
+#+BEGIN_SRC python
+  from sklearn.model_selection import train_test_split
+
+  X, y = df.drop(columns=["Label"]), df["Label"]
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
+#+END_SRC
+
+Note that we split up our target column =Label= from the rest so that it
+will not be included in the following transformations.
+
+** Fitting =TfidfVectorizers=
+   :PROPERTIES:
+   :CUSTOM_ID: Fitting-TfidfVectorizers
+   :END:
+
+Since we have two text columns (=Procedures= and =Description=), it is
+best to fit two =TfidfVectorizer=s so that all information contained in
+those two separately will be preserved. The rest of the features should
+be /scaled/ as certain models encounter numerical problems when two
+features are on very different scales (that is to say one feature
+usually is very large, e.g. $\gg 10^6$, while another only attains
+values between 0 and 1). To do all of this in one go, =sklearn= provides
+us with a
+[[https://scikit-learn.org/stable/modules/generated/sklearn.compose.ColumnTransformer.html][=ColumnTransformer=]]
+that takes a list of tuples consisting of a column name and a
+transformer that should transform the corresponding column.
+Additionally, the =ColumnTransformer='s =remainder= keyword argument may
+be another transformer that will be applied to the remaining columns.
+Here's how to use it:
+
+
+#+caption: In[3]
+#+BEGIN_SRC python
+  from sklearn.feature_extraction.text import TfidfVectorizer
+  from sklearn.compose import ColumnTransformer
+  from sklearn.preprocessing import StandardScaler
+
+
+  columnwise_tfidf = ColumnTransformer(
+      [
+          (
+              "procedures",
+              TfidfVectorizer(),
+              "Procedures"
+          ),
+          (
+              "desc",
+              TfidfVectorizer(),
+              "Description"
+          )
+      ],
+      remainder=StandardScaler(),
+      n_jobs=-1,
+  )
+#+END_SRC
+
+First, the first item in the tuple is a name for the transformation for
+later reference. Second, the
+[[https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html?highlight=tfidfvectorizer#sklearn.feature_extraction.text.TfidfVectorizer][=TfidfVectorizer=]]
+with standard arguments constructs the TF-IDF vectors in almost the same
+way that I explained it in the Blog Post accompanying this part of the
+project. The only difference is that the document frequency of each word
+is increased by one to prevent zero divisions. Third and last, the
+[[https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html][=StandardScaler=]]
+scales the remaining features such that they have zero mean and unit
+standard deviation.
+
+Applying this =ColumnTransformer= to our train set follows the usual
+=sklearn= API. Each =Transformer= has =fit= and =transform= methods.
+Here, the first is used /solely on the train set/ to fit the
+=Transformer=. Afterwards, the second may be used to transform both the
+train and test set.
+
+
+#+caption: In[4]
+#+BEGIN_SRC python
+  columnwise_tfidf.fit(X_train)
+  X_train_transformed = columnwise_tfidf.transform(X_train)
+#+END_SRC
+
+Conveniently, most transformers have a =fit_transform= method that
+combines these two steps into one:
+
+
+#+caption: In[5]
+#+BEGIN_SRC python
+  X_train_transformed = columnwise_tfidf.fit_transform(X_train)
+#+END_SRC
+
+** Extracting keywords
+   :PROPERTIES:
+   :CUSTOM_ID: Extracting-keywords
+   :END:
+
+Let us use the fitted transformers to extract keywords from articles.
+First, we will extract the vocabulary as determined by the
+=TfidfVectorizer=s. To distinguish between the words from the Procedures
+and the Description, we will prepend each of them with a prefix.
+
+
+#+caption: In[6]
+#+BEGIN_SRC python
+  def vocabulary():
+      return (
+          [f"proc__{name}" for name in columnwise_tfidf.named_transformers_["procedures"].get_feature_names()]
+          + [f"desc__{name}" for name in columnwise_tfidf.named_transformers_["desc"].get_feature_names()]
+      )
+#+END_SRC
+
+Note that the names we have provided for the =TfidfVectorizer=s earlier
+now come into play.
+
+Second, let's write a function accepting an article and returning a
+=DataFrame= containing the words with the highest frequencies.
+
+
+#+caption: In[7]
+#+BEGIN_SRC python
+  def extract_keywords(article, topn=10):
+      article_transformed = columnwise_tfidf.transform(article).toarray()[0]
+      frequencies = list(zip(vocabulary(), article_transformed))
+      frequencies.sort(key=lambda x: -x[1])
+      return pd.DataFrame(frequencies[:topn])
+#+END_SRC
+
+Finally, let's extract keywords from one of the most iconic SCP
+articles: The one for [[http://www.scp-wiki.net/scp-682][SCP-682]]. This
+is one of the best examples of Keter class SCPs.
+
+
+#+caption: In[8]
+#+BEGIN_SRC python
+  scp_682 = df.loc[df["Description"].str.startswith("SCP-682")].drop(columns=["Label"])
+  extract_keywords(scp_682)
+#+END_SRC
+
+
+#+caption: Out[8]
+|     | 0                 | 1          |
+|-----+-------------------+------------|
+| 0   | proc__682         | 0.767357   |
+| 1   | desc__kia         | 0.738121   |
+| 2   | desc__682         | 0.523255   |
+| 3   | desc__agent       | 0.171312   |
+| 4   | desc__personnel   | 0.156161   |
+| 5   | proc__speak       | 0.153737   |
+| 6   | proc__acid        | 0.144138   |
+| 7   | proc__to          | 0.133515   |
+| 8   | desc__pvt         | 0.110179   |
+| 9   | proc__scp         | 0.107281   |
+
+This does not look too promising. First, maybe numbers should be
+ignored. Then, there are words "to", "of" appearing in almost every
+article in english. "speak" might also not be telling much. This will
+only get worse if we look at the top 30 keywords.
+
+
+#+caption: In[9]
+#+BEGIN_SRC python
+  extract_keywords(scp_682, topn=30)
+#+END_SRC
+
+
+#+caption: Out[9]
+|      | 0                      | 1          |
+|------+------------------------+------------|
+| 0    | proc__682              | 0.767357   |
+| 1    | desc__kia              | 0.738121   |
+| 2    | desc__682              | 0.523255   |
+| 3    | desc__agent            | 0.171312   |
+| 4    | desc__personnel        | 0.156161   |
+| 5    | proc__speak            | 0.153737   |
+| 6    | proc__acid             | 0.144138   |
+| 7    | proc__to               | 0.133515   |
+| 8    | desc__pvt              | 0.110179   |
+| 9    | proc__scp              | 0.107281   |
+| 10   | desc__handled          | 0.106319   |
+| 11   | proc__attempts         | 0.098297   |
+| 12   | proc__reacted          | 0.095920   |
+| 13   | desc__occurrence       | 0.095232   |
+| 14   | proc__incapacitation   | 0.091120   |
+| 15   | proc__of               | 0.090828   |
+| 16   | proc__fear             | 0.087715   |
+| 17   | proc__rage             | 0.087715   |
+| 18   | proc__hydrochloric     | 0.085073   |
+| 19   | proc__massive          | 0.085073   |
+| 20   | proc__frequent         | 0.082915   |
+| 21   | proc__provoking        | 0.082915   |
+| 22   | proc__breach           | 0.082463   |
+| 23   | desc__scp              | 0.081648   |
+| 24   | proc__should           | 0.080923   |
+| 25   | proc__lining           | 0.079510   |
+| 26   | proc__called           | 0.078116   |
+| 27   | proc__incapacitated    | 0.078116   |
+| 28   | proc__force            | 0.078011   |
+| 29   | proc__destroying       | 0.076869   |
+
+** Fine-tuning the =TfidfVectorizer=
+   :PROPERTIES:
+   :CUSTOM_ID: Fine-tuning-the-TfidfVectorizer
+   :END:
+
+Fortunately, =TfidfVectorizer= has a lot of options to fine-tune its
+behavior. First and maybe most importantly, we can enforce that certain
+words should be ignored via the =stop_words= keyword argument. It either
+expects the string "english" and then uses a list constructed by the
+=sklearn= developers (with its own set of disadvantages) or it expects a
+list of strings containing the words that shall be ignored. Second, we
+can specify a regex pattern via the =token_pattern= keyword argument.
+This pattern will be used when parsing the articles to build up the
+vocabulary. The standard pattern includes single words containing
+letters and numbers; we will modify it to only parse for words
+containing letters.
+
+
+#+caption: In[10]
+#+BEGIN_SRC python
+  columnwise_tfidf = ColumnTransformer(
+      [
+          (
+              "procedures",
+              TfidfVectorizer(
+                  stop_words="english",
+                  strip_accents='unicode',
+                  token_pattern='(?u)\\b[a-zA-Z][a-zA-Z]+\\b',
+              ),
+              "Procedures"
+          ),
+          (
+              "desc",
+              TfidfVectorizer(
+                  stop_words="english",
+                  strip_accents='unicode',
+                  token_pattern='(?u)\\b[a-zA-Z][a-zA-Z]+\\b'
+              ),
+              "Description"
+          )
+      ],
+      remainder=StandardScaler()
+  )
+
+  columnwise_tfidf.fit(X_train)
+#+END_SRC
+
+
+#+caption: Out[10]
+#+BEGIN_EXAMPLE
+  ColumnTransformer(n_jobs=None,
+                    remainder=StandardScaler(copy=True, with_mean=True,
+                                             with_std=True),
+                    sparse_threshold=0.3, transformer_weights=None,
+                    transformers=[('procedures',
+                                   TfidfVectorizer(analyzer='word', binary=False,
+                                                   decode_error='strict',
+                                                   dtype=<class 'numpy.float64'>,
+                                                   encoding='utf-8',
+                                                   input='content',
+                                                   lowercase=True, max_df=1.0,
+                                                   max_features=None, min_df=1...
+                                                   dtype=<class 'numpy.float64'>,
+                                                   encoding='utf-8',
+                                                   input='content',
+                                                   lowercase=True, max_df=1.0,
+                                                   max_features=None, min_df=1,
+                                                   ngram_range=(1, 1), norm='l2',
+                                                   preprocessor=None,
+                                                   smooth_idf=True,
+                                                   stop_words='english',
+                                                   strip_accents='unicode',
+                                                   sublinear_tf=False,
+                                                   token_pattern='(?u)\\b[a-zA-Z][a-zA-Z]+\\b',
+                                                   tokenizer=None, use_idf=True,
+                                                   vocabulary=None),
+                                   'Description')],
+                    verbose=False)
+#+END_EXAMPLE
+
+
+#+caption: In[11]
+#+BEGIN_SRC python
+  extract_keywords(scp_682, topn=30)
+#+END_SRC
+
+
+#+caption: Out[11]
+|      | 0                      | 1          |
+|------+------------------------+------------|
+| 0    | desc__kia              | 0.890278   |
+| 1    | proc__speak            | 0.272335   |
+| 2    | proc__acid             | 0.255331   |
+| 3    | desc__agent            | 0.206627   |
+| 4    | proc__scp              | 0.190041   |
+| 5    | desc__personnel        | 0.188352   |
+| 6    | proc__attempts         | 0.174127   |
+| 7    | proc__reacted          | 0.169915   |
+| 8    | proc__incapacitation   | 0.161413   |
+| 9    | proc__fear             | 0.155381   |
+| 10   | proc__rage             | 0.155381   |
+| 11   | proc__hydrochloric     | 0.150702   |
+| 12   | proc__massive          | 0.150702   |
+| 13   | proc__frequent         | 0.146879   |
+| 14   | proc__provoking        | 0.146879   |
+| 15   | proc__breach           | 0.146078   |
+| 16   | proc__lining           | 0.140847   |
+| 17   | proc__called           | 0.138377   |
+| 18   | proc__incapacitated    | 0.138377   |
+| 19   | proc__force            | 0.138192   |
+| 20   | proc__destroying       | 0.136168   |
+| 21   | proc__containment      | 0.135959   |
+| 22   | desc__pvt              | 0.132891   |
+| 23   | proc__difficulty       | 0.132345   |
+| 24   | proc__submerged        | 0.132345   |
+| 25   | proc__best             | 0.130666   |
+| 26   | desc__handled          | 0.128236   |
+| 27   | proc__chamber          | 0.126861   |
+| 28   | proc__plate            | 0.125041   |
+| 29   | proc__development      | 0.123843   |
+
+This looks much better. A few remarks:
+
+- I had to google for the two abbreviations "kia" and "pvt". The first
+  is the abbreviation for "killed in action" while the second stands for
+  the military rank "Private".
+- On second thought, "speak" /may/ contain the information that the SCP
+  object is able to speak and, thusly, might hint at it being sapient.
+  As sapient SCPs are probably more likely to be of class euclid or
+  keter, this could be valuable information for a Machine Learning
+  model.
+- One could start building a custom list of stop words more suitable for
+  parsing SCP articles. In the list above, the words "best" and "called"
+  as well as "scp" could be ignored. I will postpone this to the next
+  part of this series of posts. Because some models give some insight in
+  their learning process, we can use them to see if their decisions are
+  based on filler words.
+* Conclusion
+In this blog post, we have learned how to use Jupyter Notebooks and the =pandas=
+library to extract basic statistics from SCP articles. Furthermore, we have used
+a basic TF-IDF transformation to extract keywords from SCP articles.

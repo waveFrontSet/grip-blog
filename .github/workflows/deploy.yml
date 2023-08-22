@@ -1,0 +1,41 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Run Hugo
+      uses: crazy-max/ghaction-hugo@v2
+      with:
+        version: latest
+        extended: true
+        args: --gc --minify --verbose
+    - name: Install rclone
+      run: sudo apt install rclone -y
+    - name: Create SSH Key
+      run: |
+        mkdir -p ~/.ssh/
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        sudo chmod 600 ~/.ssh/id_rsa
+      shell: bash
+      env:
+        SSH_PRIVATE_KEY: ${{secrets.PRIVATE_SSH_KEY}}
+    - name: Sync with remote
+      run: |
+        eval `ssh-agent`
+        ssh-add
+        rclone sync public/ remote:${REMOTE_DIR} --exclude-from .rcloneignore
+      env:
+        RCLONE_CONFIG_REMOTE_TYPE: sftp
+        RCLONE_CONFIG_REMOTE_HOST: ${{secrets.REMOTE_HOST}}
+        RCLONE_CONFIG_REMOTE_USER: ${{secrets.REMOTE_USER}}
+        REMOTE_DIR: ${{secrets.REMOTE_DIR}}

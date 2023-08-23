@@ -1,9 +1,13 @@
 ---
 id: 211
 date: "2019-11-24T20:00:00Z"
-tags:
+categories:
+  - data science
   - programming
-  - machine learning
+tags:
+  - webcrawl
+  - data engineering
+  - python
 title: "Classifying SCPs, Part 1: Building a web crawler"
 url: /2019/11/24/classifying-scps-part-1-building-a-web-crawler/
 ---

@@ -1,8 +1,12 @@
 ---
 id: 197
 date: 2019-09-09T19:30:00Z
+categories:
+  - programming
 tags:
   - quickfix
+  - python
+  - deployment
 title: "Quickfix: 'Push rejected' when deploying a Python app on heroku"
 url: /2019/09/09/quickfix-push-rejected-when-deploying-a-python-app-on-heroku/
 ---

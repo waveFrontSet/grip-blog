@@ -1,14 +1,11 @@
 ---
 categories:
-- math
-- probability theory
+  - maths
 date: "2019-05-19T17:04:51Z"
 id: 21
 tags:
-- expected value
-- mean
-- median
-- random variable
+  - mean
+  - median
 title: Means and medians
 url: /2019/05/19/means-and-medians/
 ---

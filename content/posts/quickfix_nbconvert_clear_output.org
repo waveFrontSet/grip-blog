@@ -1,10 +1,13 @@
 ---
 id: 449
 date: 2019-12-08T20:00:00Z
-tags:
+categories:
   - programming
-  - machine learning
+  - data science
+tags:
   - quickfix
+  - jupyter
+  - python
 title: "Quickfix: jupyter nbconvert with clear-output flag not working"
 url: /2019/12/08/quickfix-jupyter-nbconvert-with-clear-output-flag-not-working/
 ---

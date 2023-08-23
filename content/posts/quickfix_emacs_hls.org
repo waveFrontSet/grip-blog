@@ -1,8 +1,9 @@
 ---
 id: 122
 date: 2019-07-21T13:09:00Z
-tags:
+categories:
   - programming
+tags:
   - quickfix
   - vim
   - emacs

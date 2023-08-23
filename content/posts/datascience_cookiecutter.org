@@ -1,7 +1,11 @@
 ---
+categories:
+  - - programming
+  - - data science
+    - machine learning
 tags:
-  - programming
-  - machine learning
+  - python
+  - templates
 title: Why I created my own fork of the Data Science Cookiecutter template machine learning
 id: 443
 date: "2019-12-29T20:00:00Z"

@@ -19,12 +19,12 @@ hidecoloschemetoggle = false
 
 [[params.social]]
 name = "GitHub"
-icon = "fa fa-github fa-2x"
+icon = "fa fa-github-square fa-2x"
 weight = 1
 url = "https://github.com/waveFrontSet/"
 [[params.social]]
 name = "LinkedIn"
-icon = "fa fa-linkedin fa-2x"
+icon = "fa fa-linkedin-square fa-2x"
 weight = 2
 url = "https://www.linkedin.com/in/paul-grillenberger-535a20264"
 

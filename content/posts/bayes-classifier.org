@@ -1,9 +1,11 @@
 ---
 title: The Bayes Classifier
 id: 144
-tags:
+categories:
   - maths
+tags:
   - probability theory
+  - statistics
   - learning diary
 date: 2019-08-03T13:57:00
 url: /2019/08/03/bayes-classifier/

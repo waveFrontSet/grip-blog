@@ -1,9 +1,11 @@
 ---
 id: 222
 date: 2019-10-20T12:54:00Z
+categories:
+  - data science
 tags:
-  - machine learning
-  - programming
+  - project
+  - classification
 title: "A Machine Learning Project: Classifying SCPs, Part 0, Overview"
 url: /2019/10/20/a-machine-learning-project-classifying-scps-overview/
 ---

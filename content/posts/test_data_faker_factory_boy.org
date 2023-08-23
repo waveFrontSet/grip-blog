@@ -1,10 +1,14 @@
 ---
 id: 566
 date: 2020-06-21T20:00:00Z
+categories:
+  - data science
+  - programming
 tags:
+  - python
+  - testing
   - pandas
-  - faker
-  - factory boy
+  - data generation
 title: "Creating test data with Faker and Factory Boy"
 url: /2020/06/21/creating-test-data-with-faker-and-factory-boy/
 ---

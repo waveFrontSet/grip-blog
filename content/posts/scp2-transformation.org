@@ -1,9 +1,13 @@
 ---
 id: 420
 date: 2020-03-07T13:00:00Z
-tags:
+categories:
+  - data science
   - programming
-  - machine learning
+tags:
+  - python
+  - data engineering
+  - nlp
 title: "Classifying SCPs, Part 2: Data transformation (TF-IDF) and preprocessing"
 url: /2020/03/07/classifying-scps-part-2-data-transformation-and-preprocessing/
 ---

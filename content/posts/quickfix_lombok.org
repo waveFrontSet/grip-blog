@@ -1,9 +1,11 @@
 ---
 id: 111
 date: 2019-07-14T18:58:00Z
-tags:
+categories:
   - programming
+tags:
   - java
+  - intellij
   - quickfix
   - lombok
 title: "Quickfix: Using Lombok with IntelliJ causes compiler error “cannot resolve method”"

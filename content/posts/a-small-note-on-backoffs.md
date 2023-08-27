@@ -1,7 +1,6 @@
 ---
 title: "A Small Note on Backoffs"
-date: 2023-08-24T18:16:49+02:00
-draft: true
+date: 2023-08-27T15:00:00+02:00
 categories:
   - programming
   - maths
@@ -42,15 +41,20 @@ retries.
 
 ## Relating a timeout requirement with the number of retries
 
-Let's say your timeout is $t$ seconds, you have a backoff factor $b$ and the
-number of retries is $n$. Then the backoff time is
+Following the simpler implementation of retries with backoffs in `httpx`, we
+immediately retry after the first failure, then wait $b$ seconds ($b$ is the
+configurable _backoff factor_) after the second and wait twice as long after
+each following failure until we've reached the maximum number $n$ of retries. We
+can compute the total backoff time in this case as
+
 \\[
-0 + b 2^0 + b 2^1 + \dotsb + b 2^{n-1} = \sum_{i=0}^{n-1} b 2^i.
+0 + b 2^0 + b 2^1 + \dotsb + b 2^{n-2} = \sum_{i=0}^{n-2} b 2^i.
 \\]
+
 This happens to be a [geometric
 sum](https://en.wikipedia.org/wiki/Geometric_series) for which we have a closed formula:
 \\[
-\sum_{i=0}^{n-1} b 2^i = \frac{b (2^n - 1)}{2 - 1} = b(2^n - 1)
+\sum_{i=0}^{n-2} b 2^i = \frac{b (2^{n-1} - 1)}{2 - 1} = b(2^{n-1} - 1)
 \\]
 
 A necessary condition for your serverless function to complete successfully is
@@ -58,30 +62,49 @@ that this backoff time is smaller than or equal to the timeout $t$. I'd like to
 call this the _Retry-Timeout-Inequality_:
 
 \\[
-b(2^n - 1) \leq t.
+b(2^{n-1} - 1) \leq t.
 \\]
 
 The way we've written the inequality down is probably not the most useful one:
 Here, given the number of retries you'd get a lower bound for your timeout.
-What's more interesting is fixing the timeout $t$ and then computing how many retries
-we may afford. Let's rearrange to obtain $2^n \leq t/b + 1$. Then, applying the
-$2$-logarithm and using the [logarithmic identities](https://en.wikipedia.org/wiki/List_of_logarithmic_identities), we end up with the following.
+What's more interesting is fixing the timeout $t$ and then computing how many
+retries we may afford. Let's rearrange to obtain $2^{n-1} \leq t/b + 1$. Then,
+applying the $2$-logarithm and using the [logarithmic
+identities](https://en.wikipedia.org/wiki/List_of_logarithmic_identities), we
+end up with the following.
+
 \\[
-n \leq \log_2(t/b + 1) = \log_2(b+t) - \log_2(b)
+n \leq \log_2(t/b + 1) + 1 = \log_2(b+t) - \log_2(b) + 1
 \\]
 
-Let's call this the _logarithmic form of the Retry-Timeout inequality_.
+Let's call this the _logarithmic form of the Retry-Timeout-Inequality_.
 
 **Example**. Let's assume our backoff factor is $1/2$ (as is the default for
-`httpx`). Then the right-hand-side of the inequality simplifies even further:
+`httpx`). Then the right-hand-side of the logarithmic form simplifies even
+further:
 
 \\[
-\log_2(t+1/2) - \log_2(1/2) = \log_2\left(\frac{2t+1}{2}\right) + 1 =
-\log_2(2t + 1)
+\log_2(t+1/2) - \log_2(1/2) + 1
+= \log_2\left(\frac{2t+1}{2}\right) + 2
+= \log_2(2t + 1) + 1
 \\]
 
 If we assume further that our timeout happens to be $t = 30$ seconds, we see
 that $2t + 1 = 61 < 64 = 2^6$ so that
+
 \\[
-n \leq \log_2(2t+1) < \log_2(2^6) = 6.
+n \leq \log_2(2t+1) + 1 < \log_2(2^6) + 1 = 7.
 \\]
+
+This means that we can retry 6 times without reaching the timeout, at least not
+from the backoff times alone.
+
+### Conclusion
+
+To sum it up and generalize the last example, you can compute
+the maximum number of retries when using `httpx` as follows.
+
+1. Find the smallest power of two greater than $2t + 1$ where $t$ is your
+   desired timeout in seconds. This means, find an integer $k$ such that
+   $2^{k-1} < 2t + 1 < 2^k$.
+2. Your maximum number of retries is $k+1$.

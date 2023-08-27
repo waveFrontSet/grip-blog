@@ -107,4 +107,4 @@ the maximum number of retries when using `httpx` as follows.
 1. Find the smallest power of two greater than $2t + 1$ where $t$ is your
    desired timeout in seconds. This means, find an integer $k$ such that
    $2^{k-1} < 2t + 1 < 2^k$.
-2. Your maximum number of retries is $k+1$.
+2. Your maximum number of retries is $k$.

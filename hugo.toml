@@ -17,6 +17,10 @@ math = true
 colorScheme = "auto"
 hidecoloschemetoggle = false
 
+[permalinks]
+[permalinks.page]
+posts = '/:year/:month/:day/:slug/'
+
 [[params.social]]
 name = "GitHub"
 icon = "fa fa-github-square fa-2x"

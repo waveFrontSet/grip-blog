@@ -73,9 +73,10 @@ applying the $2$-logarithm and using the [logarithmic
 identities](https://en.wikipedia.org/wiki/List_of_logarithmic_identities), we
 end up with the following.
 
-\\[
-n \leq \log_2(t/b + 1) + 1 = \log_2(b+t) - \log_2(b) + 1
-\\]
+\\[\begin{align*}
+n &\leq \log_2(t/b + 1) + 1 \\\\
+&= \log_2(b+t) - \log_2(b) + 1
+\end{align*}\\]
 
 Let's call this the _logarithmic form of the Retry-Timeout-Inequality_.
 
@@ -83,18 +84,20 @@ Let's call this the _logarithmic form of the Retry-Timeout-Inequality_.
 `httpx`). Then the right-hand-side of the logarithmic form simplifies even
 further:
 
-\\[
-\log_2(t+1/2) - \log_2(1/2) + 1
-= \log_2\left(\frac{2t+1}{2}\right) + 2
-= \log_2(2t + 1) + 1
-\\]
+\\[\begin{align*}
+&\log_2(t+1/2) - \log_2(1/2) + 1 \\\\
+&= \log_2\left(\frac{2t+1}{2}\right) + 2 \\\\
+&= \log_2(2t + 1) + 1
+\end{align*}\\]
 
 If we assume further that our timeout happens to be $t = 30$ seconds, we see
 that $2t + 1 = 61 < 64 = 2^6$ so that
 
-\\[
-n \leq \log_2(2t+1) + 1 < \log_2(2^6) + 1 = 7.
-\\]
+\\[\begin{align*}
+n &\leq \log_2(2t+1) + 1 \\\\
+&< \log_2(2^6) + 1 \\\\
+&= 7.
+\end{align*}\\]
 
 This means that we can retry 6 times without reaching the timeout, at least not
 from the backoff times alone.

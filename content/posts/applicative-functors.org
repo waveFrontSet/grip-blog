@@ -1,0 +1,191 @@
+---
+id: 18412
+date: 2023-09-03T19:00:00+0200
+categories:
+  - math
+  - programming
+tags:
+  - category theory
+  - haskell
+title: "What are Haskell's applicative functors to mathematicians?"
+---
+
+While there's a plethora of articles, posts and guides that explain Haskell's
+monads with all kinds of metaphers and comparisons, applicative functors don't
+receive the same treatment even though their category-theoretical counterpart
+is not as obvious (at least not to me).
+
+Working through [[https://haskellbook.com/][/Haskell Programming from first principles/]], I've read that
+applicative functors are monoidal. With my background in algebraic topology, I
+got confused because I didn't understand what kind of monoidal structure we were
+actually working in.
+
+The root cause of my confusion is something that Haskell programmers take for
+granted because they work with it daily while mathematicians and category
+theorists in particular need further assumptions or different language to
+understand it: [[https://en.wikipedia.org/wiki/Currying][Currying]].
+
+I'd like to start by explaining this more thoroughly and then raise the abstraction level enough to be able to write about monoidal functors in category theory. As a bonus, I'll translate the formula for the applicative structure for monads into a proof that monads are applicative (at least monads on the category of sets, as it turns out).
+
+#+TOC: headlines 2
+
+* Currying in category-theoretical terms
+
+Currying is the elementary fact that a function accepting two arguments and spitting out a single value is equivalent to a function accepting one argument and spitting out a function taking one argument and spitting out a single value. If that was confusing, let's make it more precise. Let $X$, $Y$ and $Z$ be sets and let's assume we have a function
+\[
+f\colon X \times Y \to Z.
+\]
+
+Currying turns this into a function
+\[
+\mathrm{curry}(f)\colon X \to Z^{Y},
+\]
+where $Z^{Y}$ is the set of functions $Y \to Z$. Explicitly,
+\[
+\mathrm{curry}(f)(x)(y) = f(x,y).
+\]
+
+Raising the abstraction level a little, we see that currying is a bijection
+\[
+\mathrm{curry}\colon Z^{X \times Y} \cong (Z^{Y})^{X},
+\]
+resembling the well-known exponential laws.
+
+Where do monoidal categories come into play? Raising the abstraction level once more, currying being a bijection shows that the functor $X \times -$ is left adjoint to $(-)^X$, showing that the cartesian product of sets turns the category of sets into a closed monoidal category with the function sets as internal (and external!) homs.
+
+Now, from what I've seen of Haskell, Haskell programmers
+like to live on the right hand side of this adjunction (i.e., instead of playing
+around with functions with multiple arguments and applying them all at once,
+they like to use partial application and continue on with the resulting
+function). I think this is one of the reasons why Haskell is so powerful; but it
+is also the reason why I got confused by applicatives because I was more used to
+the left hand side of the currying adjunction.
+
+
+* A theorem relating monoidal and applicative functors
+
+In the following, I'd like to raise the abstraction level one more time: Instead
+of only considering the category of sets, I'd like to work with abstract
+(closed) monoidal categories. This is the general setting for monoidal functors
+and, thus, a natural home for finding out what applicative functors are.
+
+Let's begin with the definition of an applicative functor in Haskell. Usually,
+it goes via its defining applicative map, given as follows.
+#+begin_src haskell
+<*> :: f (a -> b) -> f a -> f b
+#+end_src
+
+On the left-hand-side, the functor =f= is applied to morphisms =a -> b=, considered as
+an object in the category of types. We can't translate this without any further
+assumptions into the mathematical view on category theory because in general, a
+morphism in a category is not an object at the same time. However, for /closed
+monoidal categories/ this is true.
+
+*Theorem*. Let \(F\colon (\mathcal{C}, \otimes) \to (\mathcal{C}', \otimes')\) be a functor between
+closed monoidal categories. The following are equivalent.
+
+1) \(F\) is /monoidal/, i.e. there is a natural morphism
+   \[ F(a) \otimes' F(b) \to F(a \otimes b)\]
+   for all objects \(a\) in \(\mathcal{C}\) and \(b\) in \(\mathcal{C}'\).
+2) \(F\) is /closed/, i.e. there is a natural morphism
+   \[ F[a, b] \otimes' F(a) \to F(b).\]
+3) \(F\) is /applicative/, i.e. there is a natural morphism
+   \[ F[a,b] \to [F(a), F(b)].\]
+
+Here, the third equivalent view on monoidal functors is the view that is most
+similar to applicative functors in Haskell (it's the /curried/ variant). Note that both /applicative/ and /closed/ might probably
+not be standard terms for category theorists so if you're talking to one, be sure
+to say /monoidal/ instead.
+
+Also note that I've taken the freedom to ignore what properties these maps
+satisfy. In the following, I will give a rough sketch that's heavy on category
+theory terms. You can safely skip it.
+
+*Proof*. /Ad 1) \(\Rightarrow\) 2)/: By 1), we have a natural morphism
+\[ F[m, m'] \otimes' F(m) \to F\bigl([m,m'] \otimes m\bigr).\]
+Postcompose this with \(F\) applied to the evaluation map \(\mathrm{ev}\colon [m,m']
+\otimes m \to m'\).
+
+/Ad 2) \(\Rightarrow\) 3)/: Send the given natural morphism in 2) through the \(-
+\otimes' F(m) \dashv [F(m), -]\) adjunction.
+
+/Ad 3) \(\Rightarrow\) 1)/: First, send the identity \(m \otimes m' \to m
+\otimes m'\) through the \(- \otimes m' \dashv [m', -]\) adjunction to obtain
+the so-called universal arrow \(\varepsilon\colon m \to [m', m \otimes m']\).
+Next, apply \(F\) to \(\varepsilon\) and postcompose with the natural morphism
+given in 3) to obtain a natural morphism
+\[F(m) \to F[m', m \otimes m'] \to [F(m'), F(m \otimes m')].\]
+Sending this morphism through the \(- \otimes' F(m') \dashv [F(m'), -]\)
+adjunction yields the desired morphism.
+
+* Why are monads applicative?
+
+I'll be honest: I've hit my head for a long time on this, even though you can find the formula for the applicative map in terms of the monad operations [[https://hackage.haskell.org/package/base-4.18.0.0/docs/Control-Monad.html#v:-62--62--61-][in the haskell documentation]]. To defend my case, though, I'd like to mention that the formula has a lot going on, applying the monad operation twice while defining two lambdas on the fly:
+
+#+begin_src haskell
+m1 <*> m2 = m1 >>= (\x1 -> m2 >>= (\x2 -> return (x1 x2)))
+#+end_src
+
+In hindsight, another reason why it took me so long to understand this was that, generally, monads don't seem to be applicative for any odd monoidal structure on the category. That's because a priori monads don't care for monoidal structure. In the category of sets endowed with the cartesian product as the monoidal structure, it is true, though: /Every monad on the category is sets is monoidal (and, thus, applicative)/.
+
+I've found one condition (or rather an additional structure) that relates functors to the monoidal structure so that monads having that additional structure are in fact applicative.
+
+*Definition*. Let $(\mathcal{C}, \otimes )$ be a closed monoidal category. Let $F\colon
+\mathcal{C} \to \mathcal{C}$ be a functor. The functor /lifts to the internal hom/ if for all objects $a$ and $b$ there is a natural morphism $[a, b] \to [F(a), F(b)]$ in $\mathcal{C}$.
+
+This is definitely not standard language. The idea is that while a functor only consists of natural maps of ordinary morphism sets $\mathrm{Mor}(a,b) \to \mathrm{Mor}(F(a), F(b))$ there's no reason why there should be "lifts" of these maps to internal homs (or is there?).
+
+If $\mathcal{C}$ is the category of sets and $\otimes = \times$ is the cartesian product, every functor lifts to the internal hom because the internal hom coincides with the set of morphisms. It's almost a tautology in this case, which convinces me that only considering the category of sets for the purposes of this post would have been wrong: Too many structures coincidentally match up in the category of sets.
+
+We're now ready to translate the Haskell definition of applicative structure for monads into category theory.
+
+*Theorem*. Let $M\colon (\mathcal{C}, \otimes) \to (\mathcal{C}, \otimes)$ be a monad on a closed monoidal category. Assume that $M$ /lifts to the internal hom/.
+Then $M$ is applicative.
+
+Proving this boils down to translating the Haskell code into category theoretical transformations. I'd like to do this in two steps. First, observe that we are applying the structure map of the monad =>>== twice. I claim that this is unnecessary because we can replace the inner application of the structure map by a lift of the plain functor to the internal hom. Here's how this goes.
+
+*Lemma*. Let $F\colon \mathcal{C} \to \mathcal{C}$ be a functor that lifts to the internal hom. Then we have a natural map
+\[
+F(a) \otimes [a, b] \to F(b).
+\]
+
+*Proof*. The fact that $F$ lifts to the internal hom provides us with a natural map $[a,b] \to [F(a), F(b)]$. Then, use the evaluation map at $F(a)$ to obtain a value in $F(b)$. To sum it up:
+\[
+F(a) \otimes [a,b] \to^{\mathrm{id} \otimes F} F(a) \otimes [F(a), F(b)] \to^{\mathrm{ev}_{F(a)}} F(b).
+\]
+
+Note that the evaluation map actually expects the factors in its domain to be in the inverse order. I've cheated here to make the connection to Haskell and its convention more apparent but to be rigorous, you'll have to change the order of the factors.
+
+*Proof that monads that lift to the internal hom are applicative*.
+The goal is to produce a map $M[a, b] \otimes M(a) \to M(b)$.
+Applying the lemma and sending the resulting natural map through the $- \otimes [a,b] \dashv \left[[a,b], -\right]$ adjunction, we obtain a natural map
+\[
+M(a) \to \left[[a,b], M(b)\right].
+\]
+Using this map on the right factor, we obtain a natural map
+\[
+M[a,b] \otimes M(a) \to M[a,b] \otimes \left[[a,b], M(b)\right].
+\]
+We haven't used the fact that $M$ is a monad yet but the right-hand-side is the
+source of a monad's structure map (that Haskell programmers like to call /bind/ or
+=>>==). Because mathematicians rather like the natural transformation $M^2
+\Rightarrow M$ as a monad's defining structure (this is called /join/ by Haskell
+programmers), let's walk the extra mile for the mathematicians.
+We use the lift to the internal hom in the right factor, evaluate at $M[a,b]$ and, finally, use $M^2 \Rightarrow M$:
+\[ \begin{align*}
+M[a,b] \otimes \left[[a,b], M(b)\right] &\to M[a,b] \otimes \left[M[a,b], M^2(b)\right] \\
+&\to^{\mathrm{ev}_{M[a,b]}} M^2(b) \\
+&\to^{\mathrm{join}_{b}} M(b).
+\end{align*} \]
+
+To conclude this post, let me repeat the astounding fact that we don't need any additional assumption on monads in the category of sets.
+
+*Corollary*. Every monad $M\colon (\mathrm{Sets}, \times) \to (\mathrm{Sets}, \times)$ on the closed monoidal category of sets is monoidal.
+
+As a final note or warning, there is the stronger term of a [[https://en.wikipedia.org/wiki/Monoidal_monad][/Monoidal Monad/]].
+This additionally demands for the monad's structure maps (/join/ and the unit)
+to be compatible with the monoidal structure. In general, our constructed monad
+will /not be monoidal in this sense/. The example section of the linked
+wikipedia article even contains a counter example for the category of sets. To
+make it clear: what we have shown is that the underlying functor of a monad on
+the category of sets is monoidal.

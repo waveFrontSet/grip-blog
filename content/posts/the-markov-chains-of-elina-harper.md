@@ -87,17 +87,78 @@ to draw $d$ cards from the $k$ cards we have already seen. Consequently, the
 probability to only draw cards we have already seen when having seen $k$ cards
 and drawing $d$ cards at once is
 \\[
-p_{d,k} = \frac{\binom{k}{d}}{\binom{10}{d}}.
+q_{d,k} = \frac{\binom{k}{d}}{\binom{10}{d}} = \frac{k!(10-d)!}{(k-d)!10!}.
 \\]
+In the case $d=1$ this simplifies to $q_{1,k} = k/10$ so that the probability to
+see a new card when already having seen $k$ cards is $p_{1,k} = 1-q_{1,k} = (10-k)/10$.
+
+Let's compute the expected number of rounds we have to play when only drawing
+one card from the Leads deck each round. Let $X_{k}$ be the random variable of
+rounds we have to play until we see a new card when having seen $k$ cards from
+the Leads deck. Then we may compute the expected value of $X_k$ as follows.
+$$
+\mathrm{E}[X_k] = 1 \cdot P(X_k = 1) + 2 \cdot P(X_k = 2) + 3 \cdot P(X_k = 3) +
+\dotsb = \sum_{i=1}^\infty i \cdot P(X_k = i).
+$$
+
+The probability that we have to play exactly $i \geq 1$ rounds is 
+$$
+P(X_k = i) = q_{1,k}^{i-1} p_{1,k} = \frac{k^{i-1} (10 - k)}{10^i}
+$$
+because we don't have to make any progress in the first $i-1$ rounds (which has
+probability $q_{1,k}^{i-1}$) and then finally see a new card in the $i$th round
+(which has probability $p_{1,k}$). Plugging this into our computation for the
+expected value, we end up with
+
+$$
+E[X_k] = \sum_{i=1}^\infty i \cdot \frac{k^{i-1} (10 - k)}{10^i} =
+\frac{10-k}{10} \sum_{i=1}^\infty i \cdot \left(\frac{k}{10}\right)^{i-1}.
+$$
+
+Why have I rewritten the result in this form? Because we see now that we've
+ended up with the first derivative of the [geometric
+series](https://en.wikipedia.org/wiki/Geometric_series) $\sum_{i=0}^\infty
+(k/10)^i$. Because the geometric series has the closed form
+$$
+\sum_{i=0}^\infty r^i = \frac{1}{1-r}
+$$
+which has the derivative $1/(1-r)^2$, we deduce
+$$
+\sum_{i=1}^\infty i \cdot \left(\frac{k}{10}\right)^{i-1} = \frac{1}{(1-k/10)^2}
+= \frac{10^2}{(10 - k)^2}.
+$$
+
+Finally, we arrive at
+$$
+E[X_k] = \frac{10}{10 - k}.
+$$
+
+Note that this formula also holds for $k=0$ and yields $E[X_0] = 1$ (if we
+haven't seen any card yet, we are guaranteed to see a new card in the first
+round). Summing these numbers up yields the desired average number of rounds
+when only drawing one card:
+
+$$
+\sum_{k=0}^9 E[X_k] = 10 \sum_{k=0}^9 \frac{1}{10-k} = 10 \cdot \sum_{i=0}^{10}
+\frac{1}{i} = 10 \cdot H_{10}.
+$$
+
+where $H_{10}$ denotes the 10th [harmonic number](https://en.wikipedia.org/wiki/Harmonic_number).
+
+
 
 ## Modelling drawing from the Leads deck with Markov chains
 
-```goat
-
-   .-.        .-.        .-.        .-.        .-.        .-.
-  | 0 | ---> | 2 | ---> | 4 | ---> | 6 | ---> | 8 | ---> | 10|    
-   '-'        '-'        '-'        '-'        '-'        '-'
-              | ^        | ^        | ^        | ^        | ^
-              '-'        '-'        '-'        '-'        '-'
-
-```
+{{<mermaid>}}
+flowchart LR
+    0 --> 1 & 2
+    1 --> 2 & 3
+    2 --> 2 & 3 & 4
+    3 --> 3 & 4 & 5
+    4 --> 4 & 5 & 6
+    5 --> 5 & 6 & 7
+    6 --> 6 & 7 & 8
+    7 --> 7 & 8 & 9
+    8 --> 8 & 9 & 10
+    9 --> 9 & 10
+{{</mermaid>}}

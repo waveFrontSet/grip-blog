@@ -65,7 +65,7 @@ after each draw for the three strategies.
 
 A few comments:
 
-- To have a decent chance at success, you group should be able to gather at
+- To have a decent chance at success, your group should be able to gather at
   least 2 clues per player per round.
 - If your group is able to gather *exactly* 2 clues per player each round, it
   might be better to spend those two clues each round (you will only have 8
@@ -139,20 +139,47 @@ round). Summing these numbers up yields the desired average number of rounds
 when only drawing one card:
 
 $$
-\sum_{k=0}^9 E[X_k] = 10 \sum_{k=0}^9 \frac{1}{10-k} = 10 \cdot \sum_{i=0}^{10}
+\sum_{k=0}^9 E[X_k] = 10 \sum_{k=0}^9 \frac{1}{10-k} = 10 \cdot \sum_{i=1}^{10}
 \frac{1}{i} = 10 \cdot H_{10}.
 $$
 
 where $H_{10}$ denotes the 10th [harmonic number](https://en.wikipedia.org/wiki/Harmonic_number).
 
+Likewise, we can compute the probabilities that we only take, say, 10 rounds to
+see all cards when only drawing one card from the Leads deck each round. In this
+case, we need to have $X_k = 1$ for all $0 \leq k \leq 9$ and the probability
+for that is
+$$
+\prod_{k=0}^9 p_{1,k} = \frac{10!}{10^{10}} = \frac{567}{1562500} = 0.00036288.
+$$
 
 
 ## Modelling drawing from the Leads deck with Markov chains
 
+Doing similar computations for the case where we draw more than 1 card each
+round is possible but becomes unwieldy quickly. To orchestrate computations, we
+use [Markov chains](https://en.wikipedia.org/wiki/Markov_chain) in the form of
+transition matrices.
+
+First, let us think about the case where we draw 2 cards each round:
+- In the first round, when we haven't seen any cards yet, we are guaranteed to
+  see two new cards.
+- After the first round, we have three possibilities:
+  - We could only draw the two cards we have already seen,
+  - We could draw one card we have already seen and one new card,
+  - We could draw two cards we haven't seen yet.
+- At some point, we have either seen all cards or we end up with 9 cards seen --
+  in the latter case, we only have two possibilities (see the last card or not).
+
+A *state diagram* helps to visualize these possibilities. In our case, the state
+is the number of cards we have already seen: The initial state is $0$ (we
+haven't seen any cards) and the terminal (or *absorbing*) state is $10$ (we have seen everything
+in the Leads deck). We draw an edge between states if it is possible to advance
+to that state. Here's how it could look like:
+
 {{<mermaid>}}
 flowchart LR
-    0 --> 1 & 2
-    1 --> 2 & 3
+    0 --> 2
     2 --> 2 & 3 & 4
     3 --> 3 & 4 & 5
     4 --> 4 & 5 & 6
@@ -162,3 +189,42 @@ flowchart LR
     8 --> 8 & 9 & 10
     9 --> 9 & 10
 {{</mermaid>}}
+
+From a state diagram, we may derive the *transition matrix* $P$ that
+has the probability of transitioning from state $i$ to state $j$ as its
+$(i,j)$-entry. This transition matrix is our tool of orchestrating
+our computations. We need to use two of its properties.
+
+It can be proven (by using induction and the definition of matrix
+multiplication) that $P^k$ contains the probabilities of transitioning
+from state $i$ to $j$ in exactly $k$ steps as its $(i,j)$-entry. This
+is the first property we need and we'll use it to compute the probabilities
+of transitioning to the absorbing state in any given number of rounds.
+
+To explain the second property, note that our transition matrix has the
+[canonical form](https://en.wikipedia.org/wiki/Absorbing_Markov_chain)
+
+\\[
+P =
+\begin{pmatrix}
+Q & R \\\\
+0 & 1
+\end{pmatrix},
+\\]
+
+where $Q$ is the *transition matrix of transient states*, i.e. of all
+non-absorbing states and $R$ is the vector of probabilities of transitioning
+to the absorbing state.
+
+From this, it can be shown (as a generalization of the geometric series to
+matrices) that
+\\[
+N := \sum_{i=0}^\\infty Q^i = (\mathrm{id} - Q)^{-1}.
+\\]
+$N$ is the *fundamental matrix* and contains the expected number of steps of
+transitioning from state $i$ to state $j$ before being absorbed as its
+$(i,j)$-entry. This means that $N \cdot 1$ (where we abuse notation and denote
+the vector that only contains ones by $1$) contains the expected number of steps
+before being absorbed when starting at state $i$ as its entry at position $i$.
+This is the property we use to compute the expected number of rounds.
+

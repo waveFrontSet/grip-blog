@@ -1,7 +1,7 @@
 ---
 title: "The Markov Chains of Elina Harper"
-date: 2023-12-26T15:36:29+01:00
-draft: true
+date: 2024-03-29T00:00:00+01:00
+draft: false
 slug: the-markov-chains-of-elina-harper
 categories:
   - maths
@@ -238,7 +238,8 @@ for all $0 \leq i, j \leq 10$,
 P_{ij} = \frac{\binom{i}{d - j + i} \binom{10 - i}{j - i}}{\binom{10}{d}},
 \\]
 where we use the common convention that $\binom{n}{k} = 0$ whenever $k < 0$ or $k > n$
-and the not-so-common convention to start the indices of our matrix at 0 (at least
+and the not-so-common convention to start the indices of our matrix at 0 because
+it fits the names of our states (at least
 in mathematics, it's more common to start indices of matrices at 1).
 
 Let's try and make sense of the formula. At the beginning, in state $0$, where
@@ -337,8 +338,8 @@ def transient_coefficient_matrix(
 
 I'm first filling up a $10 \times 10$ matrix (the whole transition matrix has
 shape $11 \times 11$) with zeroes. We have observed that only up to $d+1$ values
-are possibly nonzero in each row: Namely, the entries at $(i, i), (i, i+1),
-\dotsc, (i,i+d)$.
+are possibly nonzero in each row, namely, the entries at $(i, i), (i, i+1),
+\dotsc, (i,i+d)$. This is what I'm using when filling in the nontrivial values.
 
 Now we're at the heart of the matter where we can apply Markov chain theory.
 To explain the following function, note that $C / \binom{10}{d} = Q$ for the
@@ -348,6 +349,9 @@ N = (\mathrm{id} - Q)^{-1}
 = \left(\mathrm{id} - C/\binom{10}{d}\right)^{-1}
 = \binom{10}{d} \cdot \left(\mathrm{id}\cdot\binom{10}{d} - C\right)^{-1}
 \\]
+
+{{< notice info >}} I'm doing this because $C$ only contains integer values
+which produces no rounding errors for additions and subtractions. {{< /notice >}}
 
 The expected number of rounds when starting at state $0$ is the first component
 of the vector $N \cdot 1$. This is how the following functions computes it.
@@ -421,9 +425,13 @@ if __name__ == "__main__":
 
 ## Further reading
 
-It would be nice to obtain a closed formula for the probabilities of success or the expected number of rounds, like the one we've obtained via bruteforce for the case $d=1$. However, I couldn't unravel this mystery for now.
+It would be nice to obtain a closed formula for the probabilities of success or
+the expected number of rounds, like the one we've obtained via bruteforce for
+the case $d=1$.
 
-There's the [matrix geometric
-method](https://en.wikipedia.org/wiki/Matrix_geometric_method) that looks like
-it could fit our use-case. However, it requires the matrices along the diagonal
-to be identical which is not the case for us.
+- I believe [the SymPy library](https://www.sympy.org/en/index.html) might be
+  helpful in finding one, but that's for another blog post.
+- There's the [matrix geometric
+  method](https://en.wikipedia.org/wiki/Matrix_geometric_method) that looks like
+  it could fit our use-case. However, it requires the matrices along the
+  diagonal to be identical which is not the case for us.

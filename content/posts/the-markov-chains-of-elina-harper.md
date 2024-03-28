@@ -228,3 +228,202 @@ the vector that only contains ones by $1$) contains the expected number of steps
 before being absorbed when starting at state $i$ as its entry at position $i$.
 This is the property we use to compute the expected number of rounds.
 
+### Computing the transition matrix
+
+We have all the theory laid down but haven't actually defined the transition
+matrix in our case. Let $1 \leq d \leq 3$ be the number of cards to draw. Then,
+for all $0 \leq i, j \leq 10$,
+
+\\[
+P_{ij} = \frac{\binom{i}{d - j + i} \binom{10 - i}{j - i}}{\binom{10}{d}},
+\\]
+where we use the common convention that $\binom{n}{k} = 0$ whenever $k < 0$ or $k > n$
+and the not-so-common convention to start the indices of our matrix at 0 (at least
+in mathematics, it's more common to start indices of matrices at 1).
+
+Let's try and make sense of the formula. At the beginning, in state $0$, where
+we haven't seen any cards and draw $d$ cards from the Leads deck, the probability
+to transition to state $d$ is one (and any other probability should be $0$). Is this
+the case? Let's see:
+
+\\[
+P_{0j} = \frac{\binom{0}{d - j} \binom{10}{j}}{\binom{10}{d}} =
+\begin{cases}
+1 & j = d, \\\\
+0 & \text{otherwise}.
+\end{cases}
+\\]
+
+Here, we have used the convention that $\binom{0}{d-j} = 0$ if $j < d$ or $j > d$.
+More generally, $P_{ij} = 0$ whenever $j < i$ (cards that have been seen
+cannot be unseen).  What about the probability to not see any new cards, i.e.,
+about $P_{ii}$? If we have already seen $i$ cards, draw $d$ cards, and haven't
+seen any new cards that means that all $d$ cards are among the already seen $i$
+cards. There are $\binom{i}{d}$ ways this could happen. Dividing this by the
+total amount of possibilities, which is $\binom{10}{d}$, yields the desired
+probability. Our formula yields the same result because $\binom{10-i}{0} = 1$.
+
+As it turns out, $P_{ij} = 0$ also holds if $j > i + d$. Indeed, this is
+equivalent to $d - j + i < 0$ which means that, by convention, $\binom{i}{d-j+i} = 0$.
+
+In all of the cases we have investigated so far, our transition matrix really
+models drawing from the Leads deck. The only cases that remain are $i + 1 \leq j \leq i + d$.
+In this case, we want to make sure that the our formula really is
+the probability of transitioning from state $i$ to the reachable state $j$. More
+down to earth, we want to compute the probability of seeing exactly $j - i$ new
+cards assuming that we have already seen $i$ cards. First note that seeing $j-i$
+new cards means that $d-(j-i) = d-j+i$ cards are among the cards we have already
+seen. There are $\binom{i}{d-j+i}$ possibilities for this, which explains the
+first factor in the numerator of our formula. Furthermore, seeing exactly $j -i$
+new cards means that they must be among the $10 - i$ cards we have not seen yet.
+There are $\binom{10-i}{j-i}$ possibilities for this, which explains the second
+factor in the numerator of our formula. Dividing by the total number of
+possibilities to draw $d$ cards $\binom{10}{d}$ yields the desired probability.
+
+### Computing the results
+
+I've written a small Python script that computes the first few powers of the
+transition matrix and the expected number of rounds. A small trick I've used
+is that I've only computed the coefficients (i.e., the numerator of the
+probabilities). To make things a little easier to understand, I've decided
+for somewhat lengthier but more readable variable names; also, I've decided
+against hard-coding the deck size of 10.
+
+```python
+from scipy.special import comb as binom
+
+
+def c(
+    cards_seen: int,
+    new_cards_seen: int,
+    cards_drawn: int,
+    deck_size: int = 10,
+) -> int:
+    return binom(cards_seen, cards_drawn - new_cards_seen, exact=True) * binom(
+        deck_size - cards_seen, new_cards_seen, exact=True
+    )
+```
+
+The [`comb` (for *combinations*) function from the
+`scipy`
+library](https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.comb.html)
+ computes the
+exact values of binomial coefficients with the same conventions for negative
+values (as long as, you guessed it, you supplied it with the parameter
+`exact=True`). You may verify that this really is the numerator of our formula for the entries of the transition matrix by doing the following substitutions.
+- `cards_seen` -> $i$
+- `new_cards_seen` -> $j - i$
+- `cards_drawn` -> $d$
+- `deck_size` -> $10$.
+
+When assembling the coefficients, there's another trick I'm using. Note that our
+transition matrix $P$ is determined by the transition matrix of transient states
+$Q$. This generally holds for Markov chains that only have a single absorbing
+state because all rows sum up to $1$. This means that I only need to compute the
+transition matrix of transient states. I'm calling this the *transient coefficient matrix* (or *coefficient matrix of transient states*).
+
+```python
+import numpy as np
+
+
+def transient_coefficient_matrix(
+    cards_drawn: int, deck_size: int = 10
+) -> np.ndarray[Any, np.dtype[np.int32]]:
+    m = np.zeros(shape=(deck_size, deck_size), dtype=np.int32)
+    for i in range(deck_size):
+        m[i, i:] = [c(i, j, cards_drawn) for j in range(deck_size - i)]
+    return m
+```
+
+I'm first filling up a $10 \times 10$ matrix (the whole transition matrix has
+shape $11 \times 11$) with zeroes. We have observed that only up to $d+1$ values
+are possibly nonzero in each row: Namely, the entries at $(i, i), (i, i+1),
+\dotsc, (i,i+d)$.
+
+Now we're at the heart of the matter where we can apply Markov chain theory.
+To explain the following function, note that $C / \binom{10}{d} = Q$ for the
+coeffient matrix $C$ of transient states. Thus,
+\\[
+N = (\mathrm{id} - Q)^{-1}
+= \left(\mathrm{id} - C/\binom{10}{d}\right)^{-1}
+= \binom{10}{d} \cdot \left(\mathrm{id}\cdot\binom{10}{d} - C\right)^{-1}
+\\]
+
+The expected number of rounds when starting at state $0$ is the first component
+of the vector $N \cdot 1$. This is how the following functions computes it.
+
+```python
+def expected_number_of_rounds(
+    cards_drawn: int,
+    deck_size: int = 10,
+) -> float:
+    m = transient_coefficient_matrix(cards_drawn, deck_size)
+    total_possibilities = binom(deck_size, cards_drawn, exact=True)
+    expected_rounds_vec = (
+        total_possibilities
+        * np.linalg.inv(total_possibilities * np.identity(deck_size) - m)
+        @ np.ones(deck_size)
+    )
+    return expected_rounds_vec[0]
+```
+{{< notice note >}} [`@` is syntactic sugar for matrix multiplication in Python](https://peps.python.org/pep-0465/). {{< /notice >}}
+
+
+Finally, we compute the probabilities of success by computing matrix powers of
+the transition matrix. To do so, we first need to compute the transition matrix
+from the coefficient matrix of transient states (by embedding it into an $11
+\times 11$ matrix and then computing the final column by subtracting the sum of
+each row from $1$).
+
+```python
+def probabilities_of_success(
+    cards_drawn: int,
+    deck_size: int = 10,
+    up_to_round: int = 14,
+) -> list[float]:
+    m = np.zeros((deck_size + 1, deck_size + 1))
+    m[:deck_size, :deck_size] = transient_coefficient_matrix(cards_drawn)
+    m /= binom(deck_size, cards_drawn, exact=True)
+    m[:, deck_size] = np.ones(deck_size + 1) - m.sum(axis=1)
+    probs = []
+    for power in range(1, up_to_round):
+        result_vec = (
+            np.linalg.matrix_power(m, power) @ np.eye(1, deck_size + 1, deck_size).T
+        )
+        probs.append(round(result_vec[0, 0], 4))
+    return probs
+```
+
+To output the results, we use Pandas to generate a nice markdown table for the probabilities of success (which is basically what I've pasted into this blog post).
+
+```python
+def table_of_probs(up_to_round: int = 14) -> str:
+    return pd.DataFrame(
+        data={
+            f"Only drawing {i}": probabilities_of_success(
+                cards_drawn=i,
+                up_to_round=up_to_round,
+            )
+            for i in range(1, 4)
+        },
+        index=pd.RangeIndex(start=1, stop=up_to_round, name="Round"),
+    ).to_markdown()
+
+
+if __name__ == "__main__":
+    for drawn in range(1, 4):
+        print(f"d = {drawn}")
+        print(transient_coefficient_matrix(drawn))
+        print(expected_number_of_rounds(drawn))
+    print(table_of_probs())
+```
+
+
+## Further reading
+
+It would be nice to obtain a closed formula for the probabilities of success or the expected number of rounds, like the one we've obtained via bruteforce for the case $d=1$. However, I couldn't unravel this mystery for now.
+
+There's the [matrix geometric
+method](https://en.wikipedia.org/wiki/Matrix_geometric_method) that looks like
+it could fit our use-case. However, it requires the matrices along the diagonal
+to be identical which is not the case for us.

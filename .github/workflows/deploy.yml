@@ -23,7 +23,7 @@ jobs:
         tar -xvzf hugo.tar.gz
         sudo mv hugo /usr/local/bin
     - name: Run Hugo
-      run: hugo --gc --minify --verbose
+      run: hugo --gc --minify --logLevel info
     - name: Install rclone
       run: sudo apt install rclone -y
     - name: Create SSH Key

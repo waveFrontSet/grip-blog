@@ -15,7 +15,7 @@ jobs:
         submodules: recursive
     - name: Setup Hugo
       env:
-        HUGO_VERSION: 0.117.0
+        HUGO_VERSION: 0.147.0
       run: |
         mkdir ~/hugo
         cd ~/hugo

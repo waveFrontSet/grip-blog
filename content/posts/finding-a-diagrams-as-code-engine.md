@@ -1,7 +1,6 @@
 ---
 title: "Finding a Diagrams as Code Engine"
 date: 2025-04-27T20:00:00+02:00
-draft: true
 slug: finding-a-diagrams-as-code-engine
 categories:
   - programming

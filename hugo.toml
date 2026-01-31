@@ -44,3 +44,7 @@ lineAnchors = "lineNo"
 lineNos = true
 lineNumbersInTable = false
 style = 'solarized-dark'
+
+[caches]
+[caches.images]
+dir = ':cacheDir/images'
